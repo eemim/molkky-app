@@ -1,10 +1,9 @@
 // molkky.ts: pure scoring logic, no UI dependencies
 
-// copilot --resume=1c414ee2-32e2-4811-9c5d-f9f0eba83964
-
 export const TARGET = 50;
 export const RESET_TO = 25;
 export const MAX_MISSES = 3;
+export const MAX_POINTS = 12;
 
 export interface Player {
   name: string;
@@ -27,6 +26,20 @@ export interface RankedPlayer {
   player: Player;
   rank: number;
 }
+
+// Everything that happens in a game is one entry in the log.
+// points: 0 = miss, 1-12 = what the throw scored.
+export type LogEntry =
+  { type: "throw"; player: number; points: number } | { type: "results" };
+
+// What gets saved: the names and the log. The state is rebuilt by replaying.
+export interface SavedGame {
+  names: string[];
+  log: LogEntry[];
+}
+
+export type ReplayResult =
+  { ok: true; states: GameState[] } | { ok: false; conflictAt: number };
 
 // pins = the numbers (1-12) of the pins knocked down. Empty array = miss.
 export function pointsFor(pins: number[]): number {
@@ -70,15 +83,15 @@ function nextActive(players: Player[], from: number): number {
   return from;
 }
 
-export function applyThrow(state: GameState, pins: number[]): GameState {
+// Core rule: apply a throw worth `points` for the current player.
+export function applyPoints(state: GameState, points: number): GameState {
   if (state.ended) return state;
 
-  const pts = pointsFor(pins);
   const players = state.players.map((p) => ({ ...p }));
   const p = players[state.current];
   let { finishCount, dropCount } = state;
 
-  if (pts === 0) {
+  if (points === 0) {
     p.misses += 1;
     if (p.misses >= MAX_MISSES) {
       p.eliminated = true;
@@ -87,7 +100,7 @@ export function applyThrow(state: GameState, pins: number[]): GameState {
     }
   } else {
     p.misses = 0;
-    p.score += pts;
+    p.score += points;
     if (p.score > TARGET) p.score = RESET_TO;
     if (p.score === TARGET) {
       finishCount += 1;
@@ -107,6 +120,11 @@ export function applyThrow(state: GameState, pins: number[]): GameState {
     dropCount,
     ended,
   };
+}
+
+// Same as applyPoints, but takes the knocked-down pins.
+export function applyThrow(state: GameState, pins: number[]): GameState {
+  return applyPoints(state, pointsFor(pins));
 }
 
 // Manual "Results" button. Does nothing until somebody has reached 50.
@@ -148,37 +166,93 @@ export function ranking(state: GameState): RankedPlayer[] {
   return result;
 }
 
-// Undo: keep a stack of past states. Since applyThrow is pure, this is trivial.
-export class Game {
-  private stack: GameState[];
+// Rebuild every state of a game from its log. states[0] is the start,
+// states[i + 1] is the state after log[i]. If an entry doesn't fit (a throw
+// by the wrong player, a throw after the end, results too early), the replay
+// stops and reports which entry broke.
+export function replay(names: string[], log: LogEntry[]): ReplayResult {
+  const states: GameState[] = [newGame(names)];
 
-  constructor(names: string[]) {
-    this.stack = [newGame(names)];
+  for (let i = 0; i < log.length; i++) {
+    const prev = states[i];
+    const entry = log[i];
+
+    if (entry.type === "throw") {
+      if (
+        prev.ended ||
+        prev.current !== entry.player ||
+        !Number.isInteger(entry.points) ||
+        entry.points < 0 ||
+        entry.points > MAX_POINTS
+      ) {
+        return { ok: false, conflictAt: i };
+      }
+      states.push(applyPoints(prev, entry.points));
+    } else if (entry.type === "results") {
+      if (!canShowResults(prev)) return { ok: false, conflictAt: i };
+      states.push(endGame(prev));
+    } else {
+      // Anything that is neither a throw nor a results entry
+      return { ok: false, conflictAt: i };
+    }
   }
 
-  static fromStack(stack: GameState[]): Game {
-    const game = new Game([]);
-    game.stack = stack;
+  return { ok: true, states };
+}
+
+// A running game: the log is the truth, states are kept alongside it.
+export class Game {
+  private names: string[];
+  private log: LogEntry[] = [];
+  private states: GameState[];
+
+  constructor(names: string[]) {
+    this.names = names;
+    this.states = [newGame(names)];
+  }
+
+  // Returns null if the saved log doesn't replay cleanly.
+  static fromSaved(saved: SavedGame): Game | null {
+    const result = replay(saved.names, saved.log);
+    if (!result.ok) return null;
+
+    const game = new Game([...saved.names]);
+    game.log = saved.log.map((entry) => ({ ...entry }));
+    game.states = result.states;
     return game;
   }
 
-  get history(): GameState[] {
-    return this.stack;
+  get state(): GameState {
+    return this.states[this.states.length - 1];
   }
 
-  get state(): GameState {
-    return this.stack[this.stack.length - 1];
+  get saved(): SavedGame {
+    return {
+      names: [...this.names],
+      log: this.log.map((entry) => ({ ...entry })),
+    };
   }
 
   throw(pins: number[]): void {
-    this.stack.push(applyThrow(this.state, pins));
+    const prev = this.state;
+    if (prev.ended) return;
+
+    const points = pointsFor(pins);
+    this.log.push({ type: "throw", player: prev.current, points });
+    this.states.push(applyPoints(prev, points));
   }
 
   showResults(): void {
-    this.stack.push(endGame(this.state));
+    const prev = this.state;
+    if (!canShowResults(prev)) return;
+
+    this.log.push({ type: "results" });
+    this.states.push(endGame(prev));
   }
 
   undo(): void {
-    if (this.stack.length > 1) this.stack.pop();
+    if (this.log.length === 0) return;
+    this.log.pop();
+    this.states.pop();
   }
 }
