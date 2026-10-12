@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { Game, newGame, replay } from "../src/lib/molkky";
 
+// -----------------------------------------------------------------------------
+// Test fixtures
+// -----------------------------------------------------------------------------
+
 function gameWithOneFinisher(): Game {
   const game = new Game(["John", "Jane"]);
   // John: 12 + 12 + 12 + 12 + 2 = 50. Jane scores 1 each time.
@@ -9,6 +13,10 @@ function gameWithOneFinisher(): Game {
   }
   return game;
 }
+
+// -----------------------------------------------------------------------------
+// Replay validation
+// -----------------------------------------------------------------------------
 
 describe("replay validation", () => {
   it.each([-1, 13, 1.5])("rejects %s points", (points) => {
@@ -26,6 +34,10 @@ describe("replay validation", () => {
     expect(result).toEqual({ ok: false, conflictAt: 0 });
   });
 });
+
+// -----------------------------------------------------------------------------
+// Saved-game ownership
+// -----------------------------------------------------------------------------
 
 describe("ownership of the log", () => {
   it("is not changed by editing the copy returned from saved", () => {
@@ -53,6 +65,10 @@ describe("ownership of the log", () => {
     });
   });
 });
+
+// -----------------------------------------------------------------------------
+// Game lifecycle
+// -----------------------------------------------------------------------------
 
 describe("Game results", () => {
   it("can show results and undo that action", () => {
@@ -109,6 +125,10 @@ describe("Game", () => {
   });
 });
 
+// -----------------------------------------------------------------------------
+// Event log
+// -----------------------------------------------------------------------------
+
 describe("throw log", () => {
   it("records who threw and what the throw scored", () => {
     const game = new Game(["John", "Jane"]);
@@ -147,6 +167,10 @@ describe("throw log", () => {
     expect(game.saved.log).toEqual([]);
   });
 });
+
+// -----------------------------------------------------------------------------
+// Replaying and restoring games
+// -----------------------------------------------------------------------------
 
 describe("replay", () => {
   it("rebuilds the same states as the live game", () => {
@@ -218,6 +242,10 @@ describe("saving and restoring", () => {
     expect(Game.fromSaved(saved)).toBeNull();
   });
 });
+
+// -----------------------------------------------------------------------------
+// Throw-history projection
+// -----------------------------------------------------------------------------
 
 describe("throw table", () => {
   it("lists each player's rounds with points and running total", () => {
