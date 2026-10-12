@@ -9,4 +9,9 @@
 
 - Team vs team - add players to team, track player misses and scoring
 
+- Save matches and create folders for those, e.g. `mökkikesä-2026-tournament`
+  - export matches (`.csv`)??
+
+- Custom themes - background picture, 3-5 changeable colors
+
 - **UI**
