@@ -55,7 +55,11 @@ describe("newGame", () => {
 
 describe("player activity", () => {
   it("considers only non-eliminated players who have not finished active", () => {
-    const [active, finished, eliminated] = newGame(["John", "Max", "Jane"]).players;
+    const [active, finished, eliminated] = newGame([
+      "John",
+      "Max",
+      "Jane",
+    ]).players;
     finished.finishedAt = 1;
     eliminated.eliminated = true;
 
@@ -200,7 +204,13 @@ describe("results", () => {
 
 describe("ranking", () => {
   it("orders finishers, active players by score with tied ranks, then dropped players", () => {
-    const state = newGame(["First", "Second", "Tied", "Dropped first", "Dropped last"]);
+    const state = newGame([
+      "First",
+      "Second",
+      "Tied",
+      "Dropped first",
+      "Dropped last",
+    ]);
     const [first, second, tied, droppedFirst, droppedLast] = state.players;
 
     first.score = 50;
@@ -229,10 +239,8 @@ describe("ranking", () => {
 
     const names = ranking(state).map((r) => r.player.name);
 
-    expect(names).toEqual(["Max", "John", "Jane"])
+    expect(names).toEqual(["Max", "John", "Jane"]);
   });
-
-
 });
 
 describe("Game", () => {
@@ -263,9 +271,6 @@ describe("Game", () => {
 
     const saved = JSON.parse(JSON.stringify(game.history));
     const restored = Game.fromStack(saved);
-
-    console.log(restored.state, "\n-------\n");
-    console.log(game.state);
 
     expect(restored.state).toEqual(game.state);
   });
