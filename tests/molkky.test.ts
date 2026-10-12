@@ -8,6 +8,7 @@ import {
   newGame,
   pointsFor,
   ranking,
+  replay,
 } from "../src/lib/molkky";
 
 describe("pointsFor", () => {
@@ -264,27 +265,132 @@ describe("Game", () => {
     expect(game.state).toBe(initialState);
   });
 
+describe("throw log", () => {
+  it("records who threw and what the throw scored", () => {
+    const game = new Game(["John", "Jane"]);
+    game.throw([6]);
+    game.throw([2, 9]); // two pins down = 2 points
+
+    expect(game.saved.log).toEqual([
+      { type: "throw", player: 0, points: 6 },
+      { type: "throw", player: 1, points: 2 },
+    ]);
+  });
+
+  it("records a miss as zero points", () => {
+    const game = new Game(["John", "Jane"]);
+    game.throw([]);
+
+    expect(game.saved.log).toEqual([{ type: "throw", player: 0, points: 0 }]);
+  });
+
+  it("removes the last log entry on undo", () => {
+    const game = new Game(["John", "Jane"]);
+    game.throw([6]);
+    game.throw([3]);
+
+    game.undo();
+
+    expect(game.saved.log).toEqual([{ type: "throw", player: 0, points: 6 }]);
+    expect(game.state.current).toBe(1);
+  });
+
+  it("ignores throws after the game has ended", () => {
+    const game = new Game(["John", "Jane"]);
+    game.state.ended = true;
+
+    game.throw([5]);
+
+    expect(game.saved.log).toEqual([]);
+  });
+
+  it("records the results action in the log", () => {
+    const game = new Game(["John", "Jane"]);
+    game.state.finishCount = 1;
+
+    game.showResults();
+
+    expect(game.saved.log).toEqual([{ type: "results" }]);
+    expect(game.state.ended).toBe(true);
+  });
+
+  it("does not record results before anybody has finished", () => {
+    const game = new Game(["John", "Jane"]);
+
+    game.showResults();
+
+    expect(game.saved.log).toEqual([]);
+  });
+});
+
+describe("replay", () => {
+  it("rebuilds the same states as the live game", () => {
+    const game = new Game(["John", "Jane"]);
+    game.throw([6]);
+    game.throw([]);
+    game.throw([2, 9]);
+
+    const result = replay(["John", "Jane"], game.saved.log);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.states).toHaveLength(4);
+      expect(result.states[3]).toEqual(game.state);
+    }
+  });
+
+  it("reports a conflict when a throw belongs to the wrong player", () => {
+    const result = replay(
+      ["John", "Jane"],
+      [{ type: "throw", player: 1, points: 3 }],
+    );
+
+    expect(result).toEqual({ ok: false, conflictAt: 0 });
+  });
+
+  it("reports a conflict when results come before anybody has finished", () => {
+    const result = replay(
+      ["John", "Jane"],
+      [{ type: "throw", player: 0, points: 3 }, { type: "results" }],
+    );
+
+    expect(result).toEqual({ ok: false, conflictAt: 1 });
+  });
+});
+
+describe("saving and restoring", () => {
   it("survives a JSON round trip, as localStorage would do", () => {
-    const game = new Game(["Ada", "Lin"]);
+    const game = new Game(["John", "Jane"]);
     game.throw([6]);
     game.throw([]);
 
-    const saved = JSON.parse(JSON.stringify(game.history));
-    const restored = Game.fromStack(saved);
+    const saved = JSON.parse(JSON.stringify(game.saved));
+    const restored = Game.fromSaved(saved);
 
-    expect(restored.state).toEqual(game.state);
+    expect(restored).not.toBeNull();
+    expect(restored!.state).toEqual(game.state);
   });
 
   it("can still undo after being restored", () => {
-    const game = new Game(["Ada", "Lin"]);
+    const game = new Game(["John", "Jane"]);
     game.throw([6]);
 
-    const restored = Game.fromStack(JSON.parse(JSON.stringify(game.history)));
+    const restored = Game.fromSaved(JSON.parse(JSON.stringify(game.saved)))!;
     expect(restored.state.players[0].score).toBe(6);
 
     restored.undo();
 
     expect(restored.state.players[0].score).toBe(0);
-    expect(restored.state).toEqual(newGame(["Ada", "Lin"]));
+    expect(restored.state).toEqual(newGame(["John", "Jane"]));
   });
+
+  it("refuses a saved game whose log does not replay", () => {
+    const saved = {
+      names: ["John", "Jane"],
+      log: [{ type: "throw" as const, player: 1, points: 3 }],
+    };
+
+    expect(Game.fromSaved(saved)).toBeNull();
+  });
+});
 });
