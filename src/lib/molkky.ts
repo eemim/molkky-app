@@ -97,7 +97,8 @@ export function applyThrow(state: GameState, pins: number[]): GameState {
 
   // Auto-end: nobody left to play, or one player left and nobody has won yet.
   const active = players.filter(isActive);
-  const ended = active.length === 0 || (active.length === 1 && finishCount === 0);
+  const ended =
+    active.length === 0 || (active.length === 1 && finishCount === 0);
 
   return {
     players,
@@ -153,6 +154,16 @@ export class Game {
 
   constructor(names: string[]) {
     this.stack = [newGame(names)];
+  }
+
+  static fromStack(stack: GameState[]): Game {
+    const game = new Game([]);
+    game.stack = stack;
+    return game;
+  }
+
+  get history(): GameState[] {
+    return this.stack;
   }
 
   get state(): GameState {
