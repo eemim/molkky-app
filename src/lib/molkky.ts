@@ -3,6 +3,7 @@
 export const TARGET = 50;
 export const RESET_TO = 25;
 export const MAX_MISSES = 3;
+export const MAX_POINTS = 12;
 
 export interface Player {
   name: string;
@@ -177,13 +178,22 @@ export function replay(names: string[], log: LogEntry[]): ReplayResult {
     const entry = log[i];
 
     if (entry.type === "throw") {
-      if (prev.ended || prev.current !== entry.player) {
+      if (
+        prev.ended ||
+        prev.current !== entry.player ||
+        !Number.isInteger(entry.points) ||
+        entry.points < 0 ||
+        entry.points > MAX_POINTS
+      ) {
         return { ok: false, conflictAt: i };
       }
       states.push(applyPoints(prev, entry.points));
-    } else {
+    } else if (entry.type === "results") {
       if (!canShowResults(prev)) return { ok: false, conflictAt: i };
       states.push(endGame(prev));
+    } else {
+      // Anything that is neither a throw nor a results entry
+      return { ok: false, conflictAt: i };
     }
   }
 
@@ -206,8 +216,8 @@ export class Game {
     const result = replay(saved.names, saved.log);
     if (!result.ok) return null;
 
-    const game = new Game(saved.names);
-    game.log = [...saved.log];
+    const game = new Game([...saved.names]);
+    game.log = saved.log.map((entry) => ({ ...entry }));
     game.states = result.states;
     return game;
   }
@@ -217,7 +227,10 @@ export class Game {
   }
 
   get saved(): SavedGame {
-    return { names: [...this.names], log: [...this.log] };
+    return {
+      names: [...this.names],
+      log: this.log.map((entry) => ({ ...entry })),
+    };
   }
 
   throw(pins: number[]): void {
