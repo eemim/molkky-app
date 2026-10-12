@@ -200,6 +200,50 @@ export function replay(names: string[], log: LogEntry[]): ReplayResult {
   return { ok: true, states };
 }
 
+// What a throw did to the player who threw it, when it matters.
+export type ThrowEvent = "finished" | "eliminated" | "reset" | null;
+
+export interface ThrowRow {
+  index: number; // position in the log (needed later for editing)
+  round: number; // this player's 1st, 2nd, 3rd ... throw
+  points: number; // 0 = miss
+  total: number; // the player's score after this throw
+  event: ThrowEvent;
+}
+
+// One list of rows per player, in player order.
+export function throwTable(
+  names: string[],
+  log: LogEntry[],
+  states: GameState[],
+): ThrowRow[][] {
+  const table: ThrowRow[][] = names.map(() => []);
+
+  log.forEach((entry, index) => {
+    if (entry.type !== "throw") return;
+
+    const before = states[index].players[entry.player];
+    const after = states[index + 1].players[entry.player];
+
+    let event: ThrowEvent = null;
+    if (after.finishedAt !== null && before.finishedAt === null)
+      event = "finished";
+    else if (after.eliminated && !before.eliminated) event = "eliminated";
+    else if (entry.points > 0 && after.score < before.score) event = "reset";
+
+    const rows = table[entry.player];
+    rows.push({
+      index,
+      round: rows.length + 1,
+      points: entry.points,
+      total: after.score,
+      event,
+    });
+  });
+
+  return table;
+}
+
 // A running game: the log is the truth, states are kept alongside it.
 export class Game {
   private names: string[];
@@ -231,6 +275,10 @@ export class Game {
       names: [...this.names],
       log: this.log.map((entry) => ({ ...entry })),
     };
+  }
+
+  get throws(): ThrowRow[][] {
+    return throwTable(this.names, this.log, this.states);
   }
 
   throw(pins: number[]): void {
