@@ -1,10 +1,94 @@
 import { describe, expect, it } from "vitest";
+<<<<<<< HEAD
 import { Game } from "../src/lib/molkky";
 import { gameWithOneFinisher } from "./helpers";
+=======
+import { Game, newGame, replay, rotateTurnOrder } from "../src/lib/molkky";
+
+// -----------------------------------------------------------------------------
+// Test fixtures
+// -----------------------------------------------------------------------------
+
+function gameWithOneFinisher(): Game {
+  const game = new Game(["John", "Jane"]);
+  // John: 12 + 12 + 12 + 12 + 2 = 50. Jane scores 1 each time.
+  for (const pins of [[12], [1], [12], [1], [12], [1], [12], [1], [2, 5]]) {
+    game.throw(pins);
+  }
+  return game;
+}
+
+// -----------------------------------------------------------------------------
+// Replay validation
+// -----------------------------------------------------------------------------
+
+describe("replay validation", () => {
+  it.each([-1, 13, 1.5])("rejects %s points", (points) => {
+    const result = replay(
+      ["John", "Jane"],
+      [{ type: "throw", player: 0, points }],
+    );
+
+    expect(result).toEqual({ ok: false, conflictAt: 0 });
+  });
+
+  it("rejects an unknown entry type", () => {
+    const result = replay(["John", "Jane"], [{ type: "bogus" } as any]);
+
+    expect(result).toEqual({ ok: false, conflictAt: 0 });
+  });
+});
+
+// -----------------------------------------------------------------------------
+// Saved-game ownership
+// -----------------------------------------------------------------------------
+
+describe("ownership of the log", () => {
+  it("is not changed by editing the copy returned from saved", () => {
+    const game = new Game(["John", "Jane"]);
+    game.throw([6]);
+
+    const copy = game.saved;
+    (copy.log[0] as { points: number }).points = 9;
+
+    expect(game.saved.log[0]).toEqual({ type: "throw", player: 0, points: 6 });
+  });
+
+  it("is not changed by editing the object it was restored from", () => {
+    const source = new Game(["John", "Jane"]);
+    source.throw([6]);
+
+    const saved = JSON.parse(JSON.stringify(source.saved));
+    const restored = Game.fromSaved(saved)!;
+    saved.log[0].points = 9;
+
+    expect(restored.saved.log[0]).toEqual({
+      type: "throw",
+      player: 0,
+      points: 6,
+    });
+  });
+});
+>>>>>>> 3481dea (Rotation for rematch)
 
 // -----------------------------------------------------------------------------
 // Game lifecycle
 // -----------------------------------------------------------------------------
+
+describe("rematch turn order", () => {
+  it("moves the last player to the first position", () => {
+    expect(rotateTurnOrder(["John", "Jane", "Max"])).toEqual([
+      "Max",
+      "John",
+      "Jane",
+    ]);
+  });
+
+  it("does not change an order containing fewer than two players", () => {
+    expect(rotateTurnOrder([])).toEqual([]);
+    expect(rotateTurnOrder(["John"])).toEqual(["John"]);
+  });
+});
 
 describe("Game results", () => {
   it("can show results and undo that action", () => {

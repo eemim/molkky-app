@@ -1,6 +1,10 @@
 import {
   Game,
+<<<<<<< HEAD
   validNames,
+=======
+  rotateTurnOrder,
+>>>>>>> 3481dea (Rotation for rematch)
   type GameState,
   type SavedGame,
   type ThrowRow,
@@ -111,9 +115,10 @@ export function showResults() {
   save();
 }
 
-export function rematch() {
+export function rematch(changeTurns = false) {
   if (!view.state) return;
-  start(view.state.players.map((p) => p.name));
+  const names = view.state.players.map((player) => player.name);
+  start(changeTurns ? rotateTurnOrder(names) : names);
 }
 
 export function reset() {
