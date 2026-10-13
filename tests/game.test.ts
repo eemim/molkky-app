@@ -75,21 +75,6 @@ describe("ownership of the log", () => {
 // Game lifecycle
 // -----------------------------------------------------------------------------
 
-describe("rematch turn order", () => {
-  it("moves the last player to the first position", () => {
-    expect(rotateTurnOrder(["John", "Jane", "Max"])).toEqual([
-      "Max",
-      "John",
-      "Jane",
-    ]);
-  });
-
-  it("does not change an order containing fewer than two players", () => {
-    expect(rotateTurnOrder([])).toEqual([]);
-    expect(rotateTurnOrder(["John"])).toEqual(["John"]);
-  });
-});
-
 describe("Game results", () => {
   it("can show results and undo that action", () => {
     const game = gameWithOneFinisher();

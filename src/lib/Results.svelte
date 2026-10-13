@@ -1,12 +1,16 @@
 <script lang="ts">
   import { view, undo, rematch, reset } from './gameStore.svelte';
-  import { ranking } from './molkky';
+  import { ranking, rotateTurnOrder } from './molkky';
   import ThrowTable from './ThrowTable.svelte';
 
   let rows = $derived(view.state ? ranking(view.state) : []);
 
   let open = $state<number | null>(null);
   let rematchDialog = $state<HTMLDialogElement | undefined>(undefined);
+
+  let nextStarter = $derived(
+    view.state ? rotateTurnOrder(view.state.players.map((p) => p.name))[0] : ''
+  );
 
   function toggle(index: number) {
     open = open === index ? null : index;
@@ -61,13 +65,14 @@
 
     <dialog bind:this={rematchDialog} aria-labelledby="rematch-title">
       <h2 id="rematch-title">Change turn order?</h2>
-      <p>The last player from this game will throw first in the rematch.</p>
+      <p>The {nextStarter} would throw first, and everyone else moves one place later.</p>
       <div class="dialog-actions">
         <button type="button" onclick={() => startRematch(false)}>Keep order</button>
         <button type="button" class="change-turns" onclick={() => startRematch(true)}>
           Change turns
         </button>
       </div>
+      <button type="button" class="cancel" onclick={() => rematchDialog?.close()}>Cancel</button>
     </dialog>
   </section>
 {/if}
@@ -155,5 +160,13 @@
     border-color: #2e7d32;
     background: #2e7d32;
     color: #fff;
+  }
+  dialog .cancel {
+    width: 100%;
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    border: none;
+    background: none;
+    text-decoration: underline;
   }
 </style>
