@@ -33,7 +33,7 @@
         </div>
  
         {#if open === index}
-          <ThrowTable player={index} />
+          <ThrowTable player={index} editable />
         {/if}
       </li>
     {/each}

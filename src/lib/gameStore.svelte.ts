@@ -84,6 +84,21 @@ export function undo() {
   save();
 }
 
+// How many later entries an edit would remove (0 = none), or null if invalid.
+export function previewEdit(index: number, points: number): number | null {
+  if (!game) return null;
+  const preview = game.previewEdit(index, points);
+  return preview ? preview.removed : null;
+}
+
+export function editThrow(index: number, points: number) {
+  if (!game) return;
+  if (game.applyEdit(index, points)) {
+    sync();
+    save();
+  }
+}
+
 export function showResults() {
   if (!game) return;
   game.showResults();
