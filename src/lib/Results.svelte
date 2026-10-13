@@ -1,14 +1,28 @@
 <script lang="ts">
   import { view, undo, rematch, reset } from './gameStore.svelte';
-  import { ranking } from './molkky';
+  import { ranking, rotateTurnOrder } from './molkky';
   import ThrowTable from './ThrowTable.svelte';
 
   let rows = $derived(view.state ? ranking(view.state) : []);
 
   let open = $state<number | null>(null);
+  let rematchDialog = $state<HTMLDialogElement | undefined>(undefined);
+
+  let nextStarter = $derived(
+    view.state ? rotateTurnOrder(view.state.players.map((p) => p.name))[0] : ''
+  );
 
   function toggle(index: number) {
     open = open === index ? null : index;
+  }
+
+  function openRematchDialog() {
+    rematchDialog?.showModal();
+  }
+
+  function startRematch(changeTurns: boolean) {
+    rematchDialog?.close();
+    rematch(changeTurns);
   }
 </script>
 
@@ -45,9 +59,21 @@
 
     <div class="actions">
       <button type="button" onclick={undo}>Back to game</button>
-      <button type="button" onclick={rematch}>Rematch</button>
+      <button type="button" onclick={openRematchDialog}>Rematch</button>
       <button type="button" onclick={reset}>New game</button>
     </div>
+
+    <dialog bind:this={rematchDialog} aria-labelledby="rematch-title">
+      <h2 id="rematch-title">Change turn order?</h2>
+      <p>The {nextStarter} would throw first, and everyone else moves one place later.</p>
+      <div class="dialog-actions">
+        <button type="button" onclick={() => startRematch(false)}>Keep order</button>
+        <button type="button" class="change-turns" onclick={() => startRematch(true)}>
+          Change turns
+        </button>
+      </div>
+      <button type="button" class="cancel" onclick={() => rematchDialog?.close()}>Cancel</button>
+    </dialog>
   </section>
 {/if}
 
@@ -102,5 +128,45 @@
     border: 2px solid #bbb;
     border-radius: 0.5rem;
     background: #fff;
+  }
+  dialog {
+    width: min(calc(100% - 2rem), 28rem);
+    padding: 1.5rem;
+    border: 0;
+    border-radius: 0.75rem;
+    box-shadow: 0 1rem 3rem rgb(0 0 0 / 20%);
+  }
+  dialog::backdrop {
+    background: rgb(0 0 0 / 45%);
+  }
+  dialog h2 {
+    margin: 0;
+  }
+  dialog p {
+    margin: 0.75rem 0 1.25rem;
+  }
+  .dialog-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+  .dialog-actions button {
+    padding: 0.75rem;
+    border: 2px solid #bbb;
+    border-radius: 0.5rem;
+    background: #fff;
+  }
+  .dialog-actions .change-turns {
+    border-color: #2e7d32;
+    background: #2e7d32;
+    color: #fff;
+  }
+  dialog .cancel {
+    width: 100%;
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    border: none;
+    background: none;
+    text-decoration: underline;
   }
 </style>

@@ -85,6 +85,12 @@ export function newGame(names: string[]): GameState {
   };
 }
 
+// Moves the final player to the front so a different player begins the rematch.
+export function rotateTurnOrder(names: string[]): string[] {
+  if (names.length < 2) return [...names];
+  return [names[names.length - 1], ...names.slice(0, -1)];
+}
+
 // A player still in play: not eliminated and has not reached 50.
 export function isActive(p: Player): boolean {
   return !p.eliminated && p.finishedAt === null;
