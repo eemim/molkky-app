@@ -1,10 +1,7 @@
 import {
   Game,
-<<<<<<< HEAD
   validNames,
-=======
   rotateTurnOrder,
->>>>>>> 3481dea (Rotation for rematch)
   type GameState,
   type SavedGame,
   type ThrowRow,
