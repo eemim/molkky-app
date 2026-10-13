@@ -1,11 +1,11 @@
 # ToDo
 
-- Open scorelist for player/team and change individual throw points
+- Open scorelist for player/team and change individual throw points [x]
   - So you don't have to undo multiple rounds if you notice a misspress later
   
-- When `Rematch` ask if order changes. Recycle 1 -> 2 -> 3 -> 1 ...
+- When `Rematch` ask if order changes. Recycle 1 -> 2 -> 3 -> 1 ... [x]
 
-- Show individual throw points and round number in results
+- Show individual throw points and round number in results [x]
 
 - Team vs team - add players to team, track player misses and scoring
 
@@ -13,6 +13,10 @@
   - export matches (`.csv`)??
 
 - Custom themes - background picture, 3-5 changeable colors
+
+- Undo - redo
+
+- Result showing only after it is possilbe (no inactive button)
 
 - **UI**
 
