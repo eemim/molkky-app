@@ -1,4 +1,10 @@
-import { Game, type GameState, type SavedGame, type ThrowRow } from "./molkky";
+import {
+  Game,
+  validNames,
+  type GameState,
+  type SavedGame,
+  type ThrowRow,
+} from "./molkky";
 
 const STORAGE_KEY = "molkky-game-v2";
 const OLD_STORAGE_KEY = "molkky-game-v1";
@@ -29,9 +35,7 @@ function save() {
 function isValidSaved(s: any): s is SavedGame {
   return (
     s &&
-    Array.isArray(s.names) &&
-    s.names.length > 0 &&
-    s.names.every((n: unknown) => typeof n === "string") &&
+    validNames(s.names) &&
     Array.isArray(s.log) &&
     s.log.every(
       (e: any) =>
@@ -65,6 +69,7 @@ function load() {
 }
 
 export function start(names: string[]) {
+  if (!validNames(names)) return;
   game = new Game(names);
   sync();
   save();
