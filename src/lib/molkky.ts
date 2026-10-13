@@ -4,6 +4,7 @@ export const TARGET = 50;
 export const RESET_TO = 25;
 export const MAX_MISSES = 3;
 export const MAX_POINTS = 12;
+export const PIN_COUNT = 12;
 
 export interface Player {
   name: string;
@@ -46,6 +47,25 @@ export function pointsFor(pins: number[]): number {
   if (pins.length === 0) return 0;
   if (pins.length === 1) return pins[0]; // single pin: face value
   return pins.length; // 2+ pins: count of pins
+}
+
+// A game needs at least two players with non-blank names.
+// Duplicate names are allowed: the game works with player positions, not names.
+export function validNames(names: unknown): names is string[] {
+  return (
+    Array.isArray(names) &&
+    names.length >= 2 &&
+    names.every((n) => typeof n === "string" && n.trim() !== "")
+  );
+}
+
+// Pins must be unique whole numbers from 1 to 12 (an empty list is a miss).
+export function validPins(pins: unknown): pins is number[] {
+  return (
+    Array.isArray(pins) &&
+    pins.every((p) => Number.isInteger(p) && p >= 1 && p <= PIN_COUNT) &&
+    new Set(pins).size === pins.length
+  );
 }
 
 export function newGame(names: string[]): GameState {
@@ -304,22 +324,28 @@ export class Game {
   private states: GameState[];
 
   constructor(names: string[]) {
-    this.names = names;
-    this.states = [newGame(names)];
+    if (!validNames(names)) {
+      throw new Error("A game needs at least two players with names");
+    }
+    this.names = [...names];
+    this.states = [newGame(this.names)];
   }
 
-  // Returns null if the saved log doesn't replay cleanly.
+  // Returns null if the saved game is not valid or its log doesn't replay.
   static fromSaved(saved: SavedGame): Game | null {
+    if (!validNames(saved.names)) return null;
+
     const result = replay(saved.names, saved.log);
     if (!result.ok) return null;
 
-    const game = new Game([...saved.names]);
+    const game = new Game(saved.names);
     game.log = saved.log.map((entry) => ({ ...entry }));
     game.states = result.states;
     return game;
   }
 
-  get state(): GameState {
+  // Read-only at the top level: `game.state.ended = true` no longer compiles.
+  get state(): Readonly<GameState> {
     return this.states[this.states.length - 1];
   }
 
@@ -335,6 +361,10 @@ export class Game {
   }
 
   throw(pins: number[]): void {
+    if (!validPins(pins)) {
+      throw new Error(`Invalid pins: ${JSON.stringify(pins)}`);
+    }
+
     const prev = this.state;
     if (prev.ended) return;
 
