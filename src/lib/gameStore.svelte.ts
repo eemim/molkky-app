@@ -1,12 +1,21 @@
-import { Game, type GameState, type SavedGame } from './molkky';
+import { Game, type GameState, type SavedGame, type ThrowRow } from "./molkky";
 
-const STORAGE_KEY = 'molkky-game-v2';
-const OLD_STORAGE_KEY = 'molkky-game-v1';
+const STORAGE_KEY = "molkky-game-v2";
+const OLD_STORAGE_KEY = "molkky-game-v1";
 
 let game: Game | null = null;
 
 // Reactive snapshot that components read from
-export const view = $state<{ state: GameState | null }>({ state: null });
+export const view = $state<{ state: GameState | null; throws: ThrowRow[][] }>({
+  state: null,
+  throws: [],
+});
+
+// Copy the current game into the reactive snapshot
+function sync() {
+  view.state = game ? game.state : null;
+  view.throws = game ? game.throws : [];
+}
 
 function save() {
   try {
@@ -22,13 +31,15 @@ function isValidSaved(s: any): s is SavedGame {
     s &&
     Array.isArray(s.names) &&
     s.names.length > 0 &&
-    s.names.every((n: unknown) => typeof n === 'string') &&
+    s.names.every((n: unknown) => typeof n === "string") &&
     Array.isArray(s.log) &&
     s.log.every(
       (e: any) =>
         e &&
-        (e.type === 'results' ||
-          (e.type === 'throw' && Number.isInteger(e.player) && Number.isInteger(e.points)))
+        (e.type === "results" ||
+          (e.type === "throw" &&
+            Number.isInteger(e.player) &&
+            Number.isInteger(e.points))),
     )
   );
 }
@@ -47,7 +58,7 @@ function load() {
     if (!restored) return;
 
     game = restored;
-    view.state = game.state;
+    sync();
   } catch {
     // Corrupt save: ignore it and start fresh
   }
@@ -55,28 +66,43 @@ function load() {
 
 export function start(names: string[]) {
   game = new Game(names);
-  view.state = game.state;
+  sync();
   save();
 }
 
 export function throwPins(pins: number[]) {
   if (!game) return;
   game.throw(pins);
-  view.state = game.state;
+  sync();
   save();
 }
 
 export function undo() {
   if (!game) return;
   game.undo();
-  view.state = game.state;
+  sync();
   save();
+}
+
+// How many later entries an edit would remove (0 = none), or null if invalid.
+export function previewEdit(index: number, points: number): number | null {
+  if (!game) return null;
+  const preview = game.previewEdit(index, points);
+  return preview ? preview.removed : null;
+}
+
+export function editThrow(index: number, points: number) {
+  if (!game) return;
+  if (game.applyEdit(index, points)) {
+    sync();
+    save();
+  }
 }
 
 export function showResults() {
   if (!game) return;
   game.showResults();
-  view.state = game.state;
+  sync();
   save();
 }
 
@@ -87,7 +113,7 @@ export function rematch() {
 
 export function reset() {
   game = null;
-  view.state = null;
+  sync();
   save();
 }
 

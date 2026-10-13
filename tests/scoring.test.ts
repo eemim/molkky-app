@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { applyThrow, isActive, newGame, pointsFor } from "../src/lib/molkky.ts";
 
+// -----------------------------------------------------------------------------
+// Point calculation
+// -----------------------------------------------------------------------------
+
 describe("pointsFor", () => {
   it("scores a miss as zero", () => {
     expect(pointsFor([])).toBe(0);
@@ -14,6 +18,10 @@ describe("pointsFor", () => {
     expect(pointsFor([3, 7, 12])).toBe(3);
   });
 });
+
+// -----------------------------------------------------------------------------
+// Game initialization and player activity
+// -----------------------------------------------------------------------------
 
 describe("newGame", () => {
   it("initializes players and game counters", () => {
@@ -59,6 +67,10 @@ describe("player activity", () => {
     expect(isActive(eliminated)).toBe(false);
   });
 });
+
+// -----------------------------------------------------------------------------
+// Turn progression and scoring rules
+// -----------------------------------------------------------------------------
 
 describe("applyThrow", () => {
   it("advances to the next active player after a score", () => {

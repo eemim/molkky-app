@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { canShowResults, endGame, newGame, ranking } from "../src/lib/molkky";
 
+// -----------------------------------------------------------------------------
+// Results availability and completion
+// -----------------------------------------------------------------------------
+
 describe("results", () => {
   it("enables results only after a player has finished and before the game ends", () => {
     const state = newGame(["John", "Max"]);
@@ -27,6 +31,10 @@ describe("results", () => {
     expect(endGame(state)).toEqual({ ...state, ended: true });
   });
 });
+
+// -----------------------------------------------------------------------------
+// Final ranking
+// -----------------------------------------------------------------------------
 
 describe("ranking", () => {
   it("orders finishers, active players by score with tied ranks, then dropped players", () => {

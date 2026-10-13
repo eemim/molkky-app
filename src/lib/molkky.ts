@@ -166,38 +166,135 @@ export function ranking(state: GameState): RankedPlayer[] {
   return result;
 }
 
-// Rebuild every state of a game from its log. states[0] is the start,
-// states[i + 1] is the state after log[i]. If an entry doesn't fit (a throw
-// by the wrong player, a throw after the end, results too early), the replay
-// stops and reports which entry broke.
+function step(prev: GameState, entry: LogEntry): GameState | null {
+  if (entry.type === "throw") {
+    if (
+      prev.ended ||
+      prev.current !== entry.player ||
+      !Number.isInteger(entry.points) ||
+      entry.points < 0 ||
+      entry.points > MAX_POINTS
+    ) {
+      return null;
+    }
+    return applyPoints(prev, entry.points);
+  }
+
+  if (entry.type === "results") {
+    return canShowResults(prev) ? endGame(prev) : null;
+  }
+
+  return null; // unknown entry type
+}
+
 export function replay(names: string[], log: LogEntry[]): ReplayResult {
   const states: GameState[] = [newGame(names)];
 
   for (let i = 0; i < log.length; i++) {
-    const prev = states[i];
-    const entry = log[i];
-
-    if (entry.type === "throw") {
-      if (
-        prev.ended ||
-        prev.current !== entry.player ||
-        !Number.isInteger(entry.points) ||
-        entry.points < 0 ||
-        entry.points > MAX_POINTS
-      ) {
-        return { ok: false, conflictAt: i };
-      }
-      states.push(applyPoints(prev, entry.points));
-    } else if (entry.type === "results") {
-      if (!canShowResults(prev)) return { ok: false, conflictAt: i };
-      states.push(endGame(prev));
-    } else {
-      // Anything that is neither a throw nor a results entry
-      return { ok: false, conflictAt: i };
-    }
+    const next = step(states[i], log[i]);
+    if (!next) return { ok: false, conflictAt: i };
+    states.push(next);
   }
 
   return { ok: true, states };
+}
+
+export interface EditPreview {
+  log: LogEntry[]; // the log after the edit, cut where entries stop fitting
+  states: GameState[]; // states[i + 1] is the state after log[i]
+  removed: number; // how many entries were cut off (0 = nothing is lost)
+}
+
+export function previewEdit(
+  names: string[],
+  log: LogEntry[],
+  index: number,
+  points: number,
+): EditPreview | null {
+  const entry = log[index];
+  if (!entry || entry.type !== "throw") return null;
+  if (!Number.isInteger(points) || points < 0 || points > MAX_POINTS)
+    return null;
+
+  const edited: LogEntry[] = log.map((e) => ({ ...e }));
+  edited[index] = { type: "throw", player: entry.player, points };
+
+  // Replay the edited log and stop at the first entry that no longer fits.
+  const states: GameState[] = [newGame(names)];
+  const kept: LogEntry[] = [];
+  let removed = 0;
+
+  for (let i = 0; i < edited.length; i++) {
+    const prev = states[states.length - 1];
+    const entry = edited[i];
+    const next = step(prev, entry);
+
+    if (next) {
+      kept.push(entry);
+      states.push(next);
+      continue;
+    }
+
+    // A throw by a player who is now out or finished is simply dropped.
+    // The other players keep throwing in the same order.
+    const thrower =
+      entry.type === "throw" ? prev.players[entry.player] : undefined;
+    if (thrower && !prev.ended && !isActive(thrower)) {
+      removed += 1;
+      continue;
+    }
+
+    // Anything else doesn't fit (the game ended, or somebody who is still in
+    // the game would have to throw where the log has no entry): cut the log here.
+    removed += edited.length - i;
+    break;
+  }
+
+  return { log: kept, states, removed };
+}
+
+// What a throw did to the player who threw it, when it matters.
+export type ThrowEvent = "finished" | "eliminated" | "reset" | null;
+
+export interface ThrowRow {
+  index: number; // position in the log (needed later for editing)
+  round: number; // this player's 1st, 2nd, 3rd ... throw
+  points: number; // 0 = miss
+  total: number; // the player's score after this throw
+  event: ThrowEvent;
+}
+
+// One list of rows per player, in player order.
+export function throwTable(
+  names: string[],
+  log: LogEntry[],
+  states: GameState[],
+): ThrowRow[][] {
+  const table: ThrowRow[][] = names.map(() => []);
+
+  log.forEach((entry, index) => {
+    if (entry.type !== "throw") return;
+
+    const before = states[index].players[entry.player];
+    const after = states[index + 1].players[entry.player];
+
+    let event: ThrowEvent = null;
+    if (after.finishedAt !== null && before.finishedAt === null)
+      event = "finished";
+    else if (after.eliminated && !before.eliminated) event = "eliminated";
+    else if (entry.points > 0 && after.score < before.score) event = "reset";
+
+    const rows = table[entry.player];
+    rows.push({
+      index,
+      round: rows.length + 1,
+      points: entry.points,
+      total: after.score,
+      event,
+    });
+  });
+
+  return table;
 }
 
 // A running game: the log is the truth, states are kept alongside it.
@@ -233,6 +330,10 @@ export class Game {
     };
   }
 
+  get throws(): ThrowRow[][] {
+    return throwTable(this.names, this.log, this.states);
+  }
+
   throw(pins: number[]): void {
     const prev = this.state;
     if (prev.ended) return;
@@ -240,6 +341,21 @@ export class Game {
     const points = pointsFor(pins);
     this.log.push({ type: "throw", player: prev.current, points });
     this.states.push(applyPoints(prev, points));
+  }
+
+  // What an edit would do, without changing the game.
+  previewEdit(index: number, points: number): EditPreview | null {
+    return previewEdit(this.names, this.log, index, points);
+  }
+
+  // Change one earlier throw. Later entries that no longer fit are removed.
+  applyEdit(index: number, points: number): EditPreview | null {
+    const preview = this.previewEdit(index, points);
+    if (!preview) return null;
+
+    this.log = preview.log;
+    this.states = preview.states;
+    return preview;
   }
 
   showResults(): void {
