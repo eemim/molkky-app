@@ -1,24 +1,29 @@
 <script lang="ts">
   import { view, previewEdit, editThrow } from './gameStore.svelte';
-  import type { ThrowRow } from './molkky';
- 
+  import { memberStats, type ThrowRow } from './molkky';
+
   let { player, editable = false }: { player: number; editable?: boolean } = $props();
- 
+
   let rows = $derived(view.throws[player] ?? []);
- 
+
+  // Team games: the team's members, in throwing order (empty for individuals)
+  let members = $derived(view.state?.players[player]?.members ?? []);
+  let isTeam = $derived(members.length > 0);
+  let summary = $derived(memberStats(rows, members));
+
   // 0 = miss, 1 to 12 = points
   const options = Array.from({ length: 13 }, (_, i) => i);
- 
+
   function change(row: ThrowRow, select: HTMLSelectElement) {
     const points = Number(select.value);
     if (points === row.points) return;
- 
+
     const removed = previewEdit(row.index, points);
     if (removed === null) {
       select.value = String(row.points);
       return;
     }
- 
+
     if (removed > 0) {
       const throws = removed === 1 ? '1 later throw no longer fits' : `${removed} later throws no longer fit`;
       const ok = confirm(`This changes the game from this throw onward, and ${throws}. They will be removed. Continue?`);
@@ -27,18 +32,44 @@
         return;
       }
     }
- 
+
     editThrow(row.index, points);
   }
 </script>
- 
+
 {#if rows.length === 0}
   <p class="empty">No throws yet.</p>
 {:else}
-  <table>
+  {#if isTeam}
+    <table class="summary">
+      <thead>
+        <tr>
+          <th>Member</th>
+          <th>Throws</th>
+          <th>Points</th>
+          <th>Misses</th>
+        </tr>
+      </thead>
+      <tbody>
+        {#each summary as stat}
+          <tr>
+            <td>{stat.name}</td>
+            <td>{stat.throws}</td>
+            <td>{stat.points}</td>
+            <td>{stat.misses}</td>
+          </tr>
+        {/each}
+      </tbody>
+    </table>
+  {/if}
+
+  <table class="throws">
     <thead>
       <tr>
         <th>Round</th>
+        {#if isTeam}
+          <th>Thrower</th>
+        {/if}
         <th>Points</th>
         <th>Total</th>
         <th></th>
@@ -48,10 +79,15 @@
       {#each rows as row}
         <tr class:miss={row.points === 0}>
           <td>{row.round}</td>
-          <td>
+          {#if isTeam}
+            <td class="thrower">{row.member}</td>
+          {/if}
+          <td class="points">
             {#if editable}
               <select
-                aria-label={`Round ${row.round} points`}
+                aria-label={isTeam
+                  ? `Round ${row.round}, ${row.member}, points`
+                  : `Round ${row.round} points`}
                 onchange={(event) => change(row, event.currentTarget)}
               >
                 {#each options as option}
@@ -79,13 +115,16 @@
     </tbody>
   </table>
 {/if}
- 
+
 <style>
   table {
     width: 100%;
     margin-top: 0.5rem;
     border-collapse: collapse;
     font-size: 0.95rem;
+  }
+  .summary {
+    margin-bottom: 0.75rem;
   }
   th {
     text-align: left;
@@ -102,7 +141,7 @@
     font: inherit;
     padding: 0.15rem 0.25rem;
   }
-  .miss td:nth-child(2) {
+  .miss .points {
     color: #c62828;
   }
   .note {
