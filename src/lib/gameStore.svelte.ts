@@ -1,7 +1,7 @@
 import {
   Game,
-  validNames,
   rotateTurnOrder,
+  validRoster,
   type GameState,
   type SavedGame,
   type ThrowRow,
@@ -36,7 +36,7 @@ function save() {
 function isValidSaved(s: any): s is SavedGame {
   return (
     s &&
-    validNames(s.names) &&
+    validRoster(s.names, s.members) &&
     Array.isArray(s.log) &&
     s.log.every(
       (e: any) =>
@@ -69,9 +69,10 @@ function load() {
   }
 }
 
-export function start(names: string[]) {
-  if (!validNames(names)) return;
-  game = new Game(names);
+// `members` is only given for a team game: one list of members per team name.
+export function start(names: string[], members?: string[][]) {
+  if (!validRoster(names, members)) return;
+  game = new Game(names, members);
   sync();
   save();
 }
@@ -112,10 +113,21 @@ export function showResults() {
   save();
 }
 
+// Start again with the same players or teams. With `changeTurns`, the last
+// player or team goes first and everyone else moves one place later. Team
+// members keep their own order.
 export function rematch(changeTurns = false) {
   if (!view.state) return;
+
   const names = view.state.players.map((player) => player.name);
-  start(changeTurns ? rotateTurnOrder(names) : names);
+  const members = view.state.players.map((player) => [...player.members]);
+  const isTeamGame = members.some((team) => team.length > 0);
+
+  if (changeTurns) {
+    start(rotateTurnOrder(names), isTeamGame ? rotateTurnOrder(members) : undefined);
+  } else {
+    start(names, isTeamGame ? members : undefined);
+  }
 }
 
 export function reset() {

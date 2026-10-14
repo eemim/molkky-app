@@ -29,6 +29,7 @@ describe("newGame", () => {
       players: [
         {
           name: "John",
+          members: [],
           score: 0,
           misses: 0,
           eliminated: false,
@@ -37,6 +38,7 @@ describe("newGame", () => {
         },
         {
           name: "Max",
+          members: [],
           score: 0,
           misses: 0,
           eliminated: false,
