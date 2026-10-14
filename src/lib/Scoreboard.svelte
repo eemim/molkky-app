@@ -1,14 +1,18 @@
 <script lang="ts">
   import { view } from './gameStore.svelte';
+  import { currentThrower } from './molkky';
   import ThrowTable from './ThrowTable.svelte';
- 
+
   let open = $state<number | null>(null);
- 
+
+  // In a team game: the member who throws next for the current team
+  let thrower = $derived(view.state ? currentThrower(view.state, view.throws) : null);
+
   function toggle(index: number) {
     open = open === index ? null : index;
   }
 </script>
- 
+
 {#if view.state}
   {@const game = view.state}
   <ul class="scoreboard">
@@ -19,19 +23,24 @@
         class:finished={player.finishedAt !== null}
       >
         <div class="row">
-          <button
-            type="button"
-            class="name"
-            aria-expanded={open === index}
-            onclick={() => toggle(index)}
-          >
-            {open === index ? '▾' : '▸'} {player.name}
-          </button>
+          <div class="who">
+            <button
+              type="button"
+              class="name"
+              aria-expanded={open === index}
+              onclick={() => toggle(index)}
+            >
+              {open === index ? '▾' : '▸'} {player.name}
+            </button>
+            {#if thrower && index === game.current}
+              <span class="thrower">{thrower} is up</span>
+            {/if}
+          </div>
           <span class="place">{player.finishedAt !== null ? `#${player.finishedAt}` : ''}</span>
           <span class="misses">{'✕'.repeat(player.misses)}</span>
           <span class="score">{player.score}</span>
         </div>
- 
+
         {#if open === index}
           <ThrowTable player={index} editable />
         {/if}
@@ -39,7 +48,7 @@
     {/each}
   </ul>
 {/if}
- 
+
 <style>
   .scoreboard {
     list-style: none;
@@ -60,6 +69,10 @@
     align-items: center;
     gap: 1rem;
   }
+  .who {
+    display: grid;
+    justify-items: start;
+  }
   .name {
     text-align: left;
     font: inherit;
@@ -67,6 +80,11 @@
     border: none;
     background: none;
     cursor: pointer;
+  }
+  .thrower {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #2e7d32;
   }
   .score {
     font-size: 1.5rem;

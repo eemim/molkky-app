@@ -15,3 +15,12 @@
 - Custom themes - background picture, 3-5 changeable colors
 
 - **UI**
+
+## Bugs
+
+- Rematch screen has "The" which doesn't belong there
+
+- In team setup, the default "player n" mixes up between teams.
+    - PLayer 1 in team 1, player 2 in team 2. If you add one player
+    to team 1, that's player 3. Then add 2 to team two, that's player 4 and 5.
+    

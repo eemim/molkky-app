@@ -5,11 +5,13 @@ export const RESET_TO = 25;
 export const MAX_MISSES = 3;
 export const MAX_POINTS = 12;
 export const PIN_COUNT = 12;
+export const MAX_TEAM_SIZE = 7;
 
 export interface Player {
-  name: string;
+  name: string; // a player's or a team's name
+  members: string[]; // team members in throwing order; empty for an individual
   score: number;
-  misses: number; // consecutive misses
+  misses: number; // consecutive misses (for a team: the team's own)
   eliminated: boolean;
   finishedAt: number | null; // 1 = first to reach 50, 2 = second, ...
   eliminatedAt: number | null; // 1 = first to drop out, 2 = second, ...
@@ -17,9 +19,9 @@ export interface Player {
 
 export interface GameState {
   players: Player[];
-  current: number; // index of the player whose turn it is
-  finishCount: number; // how many players have reached 50
-  dropCount: number; // how many players have been eliminated
+  current: number; // index of the player or team whose turn it is
+  finishCount: number; // how many have reached 50
+  dropCount: number; // how many have been eliminated
   ended: boolean; // true once the results should be shown
 }
 
@@ -31,16 +33,20 @@ export interface RankedPlayer {
 // Everything that happens in a game is one entry in the log.
 // points: 0 = miss, 1-12 = what the throw scored.
 export type LogEntry =
-  { type: "throw"; player: number; points: number } | { type: "results" };
+  | { type: "throw"; player: number; points: number }
+  | { type: "results" };
 
-// What gets saved: the names and the log. The state is rebuilt by replaying.
+// What gets saved: the names, the team members (team games only) and the log.
+// The state is rebuilt by replaying.
 export interface SavedGame {
   names: string[];
+  members?: string[][];
   log: LogEntry[];
 }
 
 export type ReplayResult =
-  { ok: true; states: GameState[] } | { ok: false; conflictAt: number };
+  | { ok: true; states: GameState[] }
+  | { ok: false; conflictAt: number };
 
 // pins = the numbers (1-12) of the pins knocked down. Empty array = miss.
 export function pointsFor(pins: number[]): number {
@@ -49,14 +55,38 @@ export function pointsFor(pins: number[]): number {
   return pins.length; // 2+ pins: count of pins
 }
 
-// A game needs at least two players with non-blank names.
-// Duplicate names are allowed: the game works with player positions, not names.
+// A game needs at least two players or teams with non-blank names.
+// Duplicate names are allowed: the game works with positions, not names.
 export function validNames(names: unknown): names is string[] {
   return (
     Array.isArray(names) &&
     names.length >= 2 &&
     names.every((n) => typeof n === "string" && n.trim() !== "")
   );
+}
+
+// Teams: one list of members per team, 1 to MAX_TEAM_SIZE each, names not blank.
+export function validMembers(
+  members: unknown,
+  teamCount: number,
+): members is string[][] {
+  return (
+    Array.isArray(members) &&
+    members.length === teamCount &&
+    members.every(
+      (team) =>
+        Array.isArray(team) &&
+        team.length >= 1 &&
+        team.length <= MAX_TEAM_SIZE &&
+        team.every((m) => typeof m === "string" && m.trim() !== ""),
+    )
+  );
+}
+
+// Names must be valid and, for a team game, the members must fit the teams.
+export function validRoster(names: unknown, members?: unknown): boolean {
+  if (!validNames(names)) return false;
+  return members === undefined || validMembers(members, names.length);
 }
 
 // Pins must be unique whole numbers from 1 to 12 (an empty list is a miss).
@@ -68,10 +98,11 @@ export function validPins(pins: unknown): pins is number[] {
   );
 }
 
-export function newGame(names: string[]): GameState {
+export function newGame(names: string[], members?: string[][]): GameState {
   return {
-    players: names.map((name) => ({
+    players: names.map((name, i) => ({
       name,
+      members: members?.[i] ? [...members[i]] : [],
       score: 0,
       misses: 0,
       eliminated: false,
@@ -85,10 +116,9 @@ export function newGame(names: string[]): GameState {
   };
 }
 
-// Moves the final player to the front so a different player begins the rematch.
-export function rotateTurnOrder(names: string[]): string[] {
-  if (names.length < 2) return [...names];
-  return [names[names.length - 1], ...names.slice(0, -1)];
+export function rotateTurnOrder<T>(items: T[]): T[] {
+  if (items.length < 2) return [...items];
+  return [items[items.length - 1], ...items.slice(0, -1)];
 }
 
 // A player still in play: not eliminated and has not reached 50.
@@ -109,7 +139,7 @@ function nextActive(players: Player[], from: number): number {
   return from;
 }
 
-// Core rule: apply a throw worth `points` for the current player.
+// Core rule: apply a throw worth `points` for the current player or team.
 export function applyPoints(state: GameState, points: number): GameState {
   if (state.ended) return state;
 
@@ -134,7 +164,7 @@ export function applyPoints(state: GameState, points: number): GameState {
     }
   }
 
-  // Auto-end: nobody left to play, or one player left and nobody has won yet.
+  // Auto-end: nobody left to play, or one left and nobody has won yet.
   const active = players.filter(isActive);
   const ended =
     active.length === 0 || (active.length === 1 && finishCount === 0);
@@ -192,6 +222,7 @@ export function ranking(state: GameState): RankedPlayer[] {
   return result;
 }
 
+// One log entry applied to a state. Returns null if the entry doesn't fit.
 function step(prev: GameState, entry: LogEntry): GameState | null {
   if (entry.type === "throw") {
     if (
@@ -213,8 +244,16 @@ function step(prev: GameState, entry: LogEntry): GameState | null {
   return null; // unknown entry type
 }
 
-export function replay(names: string[], log: LogEntry[]): ReplayResult {
-  const states: GameState[] = [newGame(names)];
+// Rebuild every state of a game from its log. states[0] is the start,
+// states[i + 1] is the state after log[i]. If an entry doesn't fit (a throw
+// by the wrong player, a throw after the end, results too early), the replay
+// stops and reports which entry broke.
+export function replay(
+  names: string[],
+  log: LogEntry[],
+  members?: string[][],
+): ReplayResult {
+  const states: GameState[] = [newGame(names, members)];
 
   for (let i = 0; i < log.length; i++) {
     const next = step(states[i], log[i]);
@@ -231,11 +270,14 @@ export interface EditPreview {
   removed: number; // how many entries were cut off (0 = nothing is lost)
 }
 
+// What would happen if the throw at `index` scored `points` instead?
+// Returns null if the edit makes no sense (not a throw, bad points).
 export function previewEdit(
   names: string[],
   log: LogEntry[],
   index: number,
   points: number,
+  members?: string[][],
 ): EditPreview | null {
   const entry = log[index];
   if (!entry || entry.type !== "throw") return null;
@@ -245,26 +287,25 @@ export function previewEdit(
   const edited: LogEntry[] = log.map((e) => ({ ...e }));
   edited[index] = { type: "throw", player: entry.player, points };
 
-  // Replay the edited log and stop at the first entry that no longer fits.
-  const states: GameState[] = [newGame(names)];
+  const states: GameState[] = [newGame(names, members)];
   const kept: LogEntry[] = [];
   let removed = 0;
 
   for (let i = 0; i < edited.length; i++) {
     const prev = states[states.length - 1];
-    const entry = edited[i];
-    const next = step(prev, entry);
+    const candidate = edited[i];
+    const next = step(prev, candidate);
 
     if (next) {
-      kept.push(entry);
+      kept.push(candidate);
       states.push(next);
       continue;
     }
 
     // A throw by a player who is now out or finished is simply dropped.
-    // The other players keep throwing in the same order.
+    // The others keep throwing in the same order.
     const thrower =
-      entry.type === "throw" ? prev.players[entry.player] : undefined;
+      candidate.type === "throw" ? prev.players[candidate.player] : undefined;
     if (thrower && !prev.ended && !isActive(thrower)) {
       removed += 1;
       continue;
@@ -283,14 +324,17 @@ export function previewEdit(
 export type ThrowEvent = "finished" | "eliminated" | "reset" | null;
 
 export interface ThrowRow {
-  index: number; // position in the log (needed later for editing)
-  round: number; // this player's 1st, 2nd, 3rd ... throw
+  index: number; // position in the log (needed for editing)
+  round: number; // this player's or team's 1st, 2nd, 3rd ... throw
   points: number; // 0 = miss
-  total: number; // the player's score after this throw
+  total: number; // the score after this throw
   event: ThrowEvent;
+  member?: string; // who threw it (team games only)
 }
 
-// One list of rows per player, in player order.
+// One list of rows per player or team, in order. In a team game the members
+// take turns in their fixed order: the team's Nth throw belongs to member
+// N mod team size, whatever the earlier throws scored.
 export function throwTable(
   names: string[],
   log: LogEntry[],
@@ -311,40 +355,90 @@ export function throwTable(
     else if (entry.points > 0 && after.score < before.score) event = "reset";
 
     const rows = table[entry.player];
-    rows.push({
+    const row: ThrowRow = {
       index,
       round: rows.length + 1,
       points: entry.points,
       total: after.score,
       event,
-    });
+    };
+
+    const team = states[0].players[entry.player].members;
+    if (team.length > 0) row.member = team[rows.length % team.length];
+
+    rows.push(row);
   });
 
   return table;
 }
 
+// Who throws next in a team game, or null (individuals, or the game is over).
+export function currentThrower(
+  state: GameState,
+  table: ThrowRow[][],
+): string | null {
+  if (state.ended) return null;
+
+  const team = state.players[state.current]?.members ?? [];
+  if (team.length === 0) return null;
+
+  const thrown = table[state.current]?.length ?? 0;
+  return team[thrown % team.length];
+}
+
+export interface MemberStats {
+  name: string;
+  throws: number;
+  points: number; // sum of the points of the member's throws
+  misses: number; // how many of them were misses
+}
+
+// A summary per team member, in throwing order, from the team's table rows.
+export function memberStats(rows: ThrowRow[], members: string[]): MemberStats[] {
+  if (members.length === 0) return [];
+
+  const stats = members.map((name) => ({
+    name,
+    throws: 0,
+    points: 0,
+    misses: 0,
+  }));
+
+  for (const row of rows) {
+    const s = stats[(row.round - 1) % stats.length];
+    s.throws += 1;
+    s.points += row.points;
+    if (row.points === 0) s.misses += 1;
+  }
+
+  return stats;
+}
+
 // A running game: the log is the truth, states are kept alongside it.
 export class Game {
   private names: string[];
+  private members: string[][] | undefined;
   private log: LogEntry[] = [];
   private states: GameState[];
 
-  constructor(names: string[]) {
-    if (!validNames(names)) {
-      throw new Error("A game needs at least two players with names");
+  // `members` is only given for a team game: one list per team name.
+  constructor(names: string[], members?: string[][]) {
+    if (!validRoster(names, members)) {
+      throw new Error("A game needs at least two players or teams with names");
     }
     this.names = [...names];
-    this.states = [newGame(this.names)];
+    this.members = members?.map((team) => [...team]);
+    this.states = [newGame(this.names, this.members)];
   }
 
   // Returns null if the saved game is not valid or its log doesn't replay.
   static fromSaved(saved: SavedGame): Game | null {
-    if (!validNames(saved.names)) return null;
+    if (!validRoster(saved.names, saved.members)) return null;
 
-    const result = replay(saved.names, saved.log);
+    const result = replay(saved.names, saved.log, saved.members);
     if (!result.ok) return null;
 
-    const game = new Game(saved.names);
+    const game = new Game(saved.names, saved.members);
     game.log = saved.log.map((entry) => ({ ...entry }));
     game.states = result.states;
     return game;
@@ -356,10 +450,12 @@ export class Game {
   }
 
   get saved(): SavedGame {
-    return {
+    const saved: SavedGame = {
       names: [...this.names],
       log: this.log.map((entry) => ({ ...entry })),
     };
+    if (this.members) saved.members = this.members.map((team) => [...team]);
+    return saved;
   }
 
   get throws(): ThrowRow[][] {
@@ -381,7 +477,7 @@ export class Game {
 
   // What an edit would do, without changing the game.
   previewEdit(index: number, points: number): EditPreview | null {
-    return previewEdit(this.names, this.log, index, points);
+    return previewEdit(this.names, this.log, index, points, this.members);
   }
 
   // Change one earlier throw. Later entries that no longer fit are removed.
