@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="160" viewBox="0 0 128 160" role="img" aria-labelledby="title desc">
+<title id="title">Mölkky pin 11</title>
+<desc id="desc">A numbered Mölkky skittle, number 11, with a rounded oval top and subtle vertical wood grain.</desc>
+<defs>
+  <linearGradient id="body" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0" stop-color="#d7bc7d"/>
+    <stop offset=".18" stop-color="#f5e4b8"/>
+    <stop offset=".52" stop-color="#f5e4b8"/>
+    <stop offset=".82" stop-color="#f5e4b8"/>
+    <stop offset="1" stop-color="#d7bc7d"/>
+  </linearGradient>
+  <linearGradient id="top" x1="0" y1="0" x2=".8" y2="1">
+    <stop offset="0" stop-color="#fff0cb"/>
+    <stop offset="1" stop-color="#e9d39e"/>
+  </linearGradient>
+</defs>
+<!-- Pin body -->
+<path d="M23 43 C23 60 26 91 28 124 C29 141 42 150 64 150 C86 150 99 141 100 124 C102 91 105 60 105 43"
+ fill="url(#body)" stroke="#29371b" stroke-width="4" stroke-linejoin="round"/>
+<!-- Fine, sparse wood grain -->
+<g fill="none" stroke="#b99a5d" stroke-width="1.15" stroke-linecap="round" opacity=".85">
+ <path d="M37 66 C37 85 40 111 41 137"/>
+ <path d="M48 73 C47 94 50 119 51 142"/>
+ <path d="M60 78 C60 99 61 124 61 144"/>
+ <path d="M76 77 C77 99 75 124 77 143"/>
+ <path d="M88 70 C89 91 87 116 86 138"/>
+ <path d="M32 83 C34 97 33 110 36 121"/>
+ <path d="M96 82 C94 97 95 111 92 123"/>
+</g>
+<g fill="none" stroke="#fff0c7" stroke-width="1" stroke-linecap="round" opacity=".85">
+ <path d="M43 72 C43 95 44 118 45 135"/>
+ <path d="M82 73 C82 95 81 119 81 136"/>
+</g>
+<!-- Oval numbered face -->
+<ellipse cx="64" cy="42" rx="41" ry="35.5" fill="url(#top)" stroke="#29371b" stroke-width="4.5"/>
+<path d="M31 34 C35 17 49 9 64 8" fill="none" stroke="#fff0c7" stroke-width="1.2" opacity=".7" stroke-linecap="round"/>
+<text x="64" y="56" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif"
+ font-size="33" font-weight="800" letter-spacing="-1.2" fill="#29371b">11</text>
+</svg>

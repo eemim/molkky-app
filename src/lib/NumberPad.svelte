@@ -2,7 +2,12 @@
   import { view, throwPins } from './gameStore.svelte';
   import { pointsFor } from './molkky';
 
-  const pinNumbers = Array.from({ length: 12 }, (_, i) => i + 1);
+  const pinRows = [
+    [7, 9, 8],
+    [5, 11, 12, 6],
+    [3, 10, 4],
+    [1, 2],
+  ];
 
   let selected = $state<number[]>([]);
 
@@ -26,6 +31,7 @@
 
 {#if view.state}
   <section class="pad">
+<<<<<<< HEAD
     <div class="grid">
       {#each pinNumbers as pin (pin)}
         <button
@@ -36,6 +42,25 @@
         >
           {pin}
         </button>
+=======
+    <div class="pin-layout" aria-label="Select knocked-down pins">
+      {#each pinRows as row}
+        <div class="pin-row">
+          {#each row as pin}
+            {@const isSelected = selected.includes(pin)}
+            <button
+              type="button"
+              class:selected={isSelected}
+              disabled={finished}
+              aria-label={`Pin ${pin}${isSelected ? ', selected' : ''}`}
+              aria-pressed={isSelected}
+              onclick={() => toggle(pin)}
+            >
+              <img src={`/pins/${isSelected ? 'bw' : 'color'}-${pin}.svg`} alt="" />
+            </button>
+          {/each}
+        </div>
+>>>>>>> 3cd5189 (Pins)
       {/each}
     </div>
 
@@ -57,25 +82,35 @@
   .pad {
     margin-top: 1rem;
   }
-  .grid {
+  .pin-layout {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0.5rem;
+    gap: 0.25rem;
+    justify-items: center;
   }
-  button {
-    padding: 1rem 0;
-    font-size: 1.25rem;
-    border: 2px solid #bbb;
-    border-radius: 0.5rem;
-    background: #fff;
+  .pin-row {
+    display: flex;
+    justify-content: center;
+    gap: clamp(0.15rem, 1vw, 0.5rem);
   }
-  button.on {
-    background: #2e7d32;
-    border-color: #2e7d32;
-    color: #fff;
+  .pin-row button {
+    display: block;
+    width: clamp(2.8rem, 15vw, 5.25rem);
+    padding: 0;
+    border: 0;
+    background: none;
+    line-height: 0;
+    transition: transform 150ms ease;
   }
-  button:disabled {
-    opacity: 0.4;
+  .pin-row button:hover:not(:disabled),
+  .pin-row button.selected {
+    transform: translateY(-0.2rem);
+  }
+  .pin-row img {
+    width: 100%;
+    height: auto;
+  }
+  .pin-row button:disabled {
+    opacity: 0.45;
   }
   .actions {
     display: grid;
@@ -84,12 +119,24 @@
     margin-top: 0.75rem;
   }
   .miss {
+    padding: 1rem 0;
+    font-size: 1.25rem;
+    border: 2px solid #c62828;
+    border-radius: 0.5rem;
+    background: #fff;
     border-color: #c62828;
     color: #c62828;
   }
   .confirm {
+    padding: 1rem 0;
+    font-size: 1.25rem;
+    border: 2px solid #2e7d32;
+    border-radius: 0.5rem;
     background: #2e7d32;
     border-color: #2e7d32;
     color: #fff;
+  }
+  .actions button:disabled {
+    opacity: 0.4;
   }
 </style>
