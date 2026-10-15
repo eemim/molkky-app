@@ -13,9 +13,14 @@ const OLD_STORAGE_KEY = "molkky-game-v1";
 let game: Game | null = null;
 
 // Reactive snapshot that components read from
-export const view = $state<{ state: GameState | null; throws: ThrowRow[][] }>({
+export const view = $state<{
+  state: GameState | null;
+  throws: ThrowRow[][];
+  editingTeams: boolean; // the "Edit teams" screen is open after a team game
+}>({
   state: null,
   throws: [],
+  editingTeams: false,
 });
 
 // Copy the current game into the reactive snapshot
@@ -73,6 +78,7 @@ function load() {
 export function start(names: string[], members?: string[][]) {
   if (!validRoster(names, members)) return;
   game = new Game(names, members);
+  view.editingTeams = false;
   sync();
   save();
 }
@@ -130,8 +136,19 @@ export function rematch(changeTurns = false) {
   }
 }
 
+// Open the "Edit teams" screen, pre-filled with the finished game's teams.
+// The finished game stays as it is until a new one is started.
+export function editTeams() {
+  if (view.state?.ended) view.editingTeams = true;
+}
+
+export function cancelEditTeams() {
+  view.editingTeams = false;
+}
+
 export function reset() {
   game = null;
+  view.editingTeams = false;
   sync();
   save();
 }

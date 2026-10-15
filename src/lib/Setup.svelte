@@ -1,19 +1,37 @@
 <script lang="ts">
-  import { start } from './gameStore.svelte';
+  import { untrack } from 'svelte';
+  import { start, view, cancelEditTeams } from './gameStore.svelte';
   import { MAX_TEAM_SIZE, validRoster } from './molkky';
   import { moveItem } from './list';
 
   type Mode = 'individuals' | 'teams';
   type Team = { name: string; members: string[] };
 
-  let mode = $state<Mode>('individuals');
+  // `rematch`: edit the teams of the game that just finished, then play again
+  let { rematch = false }: { rematch?: boolean } = $props();
+
+  function finishedTeams(): Team[] {
+    return (view.state?.players ?? []).map((player) => ({
+      name: player.name,
+      members: [...player.members],
+    }));
+  }
+
+  // The screen is created fresh each time, so the forms only need the starting value
+  const editingFinishedGame = untrack(() => rematch);
+
+  let mode = $state<Mode>(editingFinishedGame ? 'teams' : 'individuals');
 
   // Each tab keeps its own form, so switching tabs loses nothing.
   let players = $state<string[]>(['Player 1', 'Player 2']);
-  let teams = $state<Team[]>([
-    { name: 'Team 1', members: ['Player 1'] },
-    { name: 'Team 2', members: ['Player 2'] },
-  ]);
+  let teams = $state<Team[]>(
+    editingFinishedGame
+      ? finishedTeams()
+      : [
+          { name: 'Team 1', members: ['Player 1'] },
+          { name: 'Team 2', members: ['Player 2'] },
+        ]
+  );
 
   let memberCount = $derived(teams.reduce((total, team) => total + team.members.length, 0));
 
@@ -42,12 +60,20 @@
     players.splice(index, 1);
   }
 
+  function movePlayer(index: number, step: number) {
+    players = moveItem(players, index, index + step);
+  }
+
   function addTeam() {
     teams.push({ name: `Team ${teams.length + 1}`, members: [`Player ${memberCount + 1}`] });
   }
 
   function removeTeam(index: number) {
     teams.splice(index, 1);
+  }
+
+  function moveTeam(index: number, step: number) {
+    teams = moveItem(teams, index, index + step);
   }
 
   function addMember(teamIndex: number) {
@@ -68,32 +94,34 @@
 
 <section class="setup-card" aria-labelledby="setup-title">
   <div class="eyebrow">Molkky</div>
-  <h1 id="setup-title">Set up your game</h1>
+  <h1 id="setup-title">{rematch ? 'Edit teams' : 'Set up your game'}</h1>
 
-  <div class="tabs" role="tablist" aria-label="Game type">
-    <button
-      type="button"
-      role="tab"
-      id="tab-individuals"
-      aria-selected={mode === 'individuals'}
-      aria-controls="setup-panel"
-      class:active={mode === 'individuals'}
-      onclick={() => (mode = 'individuals')}
-    >
-      Individuals
-    </button>
-    <button
-      type="button"
-      role="tab"
-      id="tab-teams"
-      aria-selected={mode === 'teams'}
-      aria-controls="setup-panel"
-      class:active={mode === 'teams'}
-      onclick={() => (mode = 'teams')}
-    >
-      Teams
-    </button>
-  </div>
+  {#if !rematch}
+    <div class="tabs" role="tablist" aria-label="Game type">
+      <button
+        type="button"
+        role="tab"
+        id="tab-individuals"
+        aria-selected={mode === 'individuals'}
+        aria-controls="setup-panel"
+        class:active={mode === 'individuals'}
+        onclick={() => (mode = 'individuals')}
+      >
+        Individuals
+      </button>
+      <button
+        type="button"
+        role="tab"
+        id="tab-teams"
+        aria-selected={mode === 'teams'}
+        aria-controls="setup-panel"
+        class:active={mode === 'teams'}
+        onclick={() => (mode = 'teams')}
+      >
+        Teams
+      </button>
+    </div>
+  {/if}
 
   <form
     onsubmit={(event) => {
@@ -123,12 +151,30 @@
               />
               <button
                 type="button"
-                class="text-button"
+                class="icon-button"
+                onclick={() => movePlayer(index, -1)}
+                disabled={index === 0}
+                aria-label={`Move ${player.trim() || `player ${index + 1}`} up`}
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                class="icon-button"
+                onclick={() => movePlayer(index, 1)}
+                disabled={index === players.length - 1}
+                aria-label={`Move ${player.trim() || `player ${index + 1}`} down`}
+              >
+                ↓
+              </button>
+              <button
+                type="button"
+                class="icon-button"
                 onclick={() => removePlayer(index)}
                 disabled={players.length <= 2}
                 aria-label={`Remove ${player.trim() || `player ${index + 1}`}`}
               >
-                Remove
+                ✕
               </button>
             </div>
           {/each}
@@ -136,7 +182,13 @@
 
         <button class="add" type="button" onclick={addPlayer}>+ Add player</button>
       {:else}
-        <p class="intro">Name the teams, then add their members in throwing order.</p>
+        <p class="intro">
+          {#if rematch}
+            Reorder the teams and their members, then press Play.
+          {:else}
+            Name the teams, then add their members in throwing order.
+          {/if}
+        </p>
 
         <div class="list-heading">
           <span>Teams</span>
@@ -158,12 +210,30 @@
               />
               <button
                 type="button"
-                class="text-button"
+                class="icon-button"
+                onclick={() => moveTeam(teamIndex, -1)}
+                disabled={teamIndex === 0}
+                aria-label={`Move ${team.name.trim() || `team ${teamIndex + 1}`} up`}
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                class="icon-button"
+                onclick={() => moveTeam(teamIndex, 1)}
+                disabled={teamIndex === teams.length - 1}
+                aria-label={`Move ${team.name.trim() || `team ${teamIndex + 1}`} down`}
+              >
+                ↓
+              </button>
+              <button
+                type="button"
+                class="icon-button"
                 onclick={() => removeTeam(teamIndex)}
                 disabled={teams.length <= 2}
                 aria-label={`Remove ${team.name.trim() || `team ${teamIndex + 1}`}`}
               >
-                Remove team
+                ✕
               </button>
             </div>
 
@@ -227,7 +297,14 @@
       {/if}
     </div>
 
-    <button class="start" type="submit" disabled={!ready}>Start game</button>
+    <div class="actions" class:with-cancel={rematch}>
+      {#if rematch}
+        <button class="cancel" type="button" onclick={cancelEditTeams}>Cancel</button>
+      {/if}
+      <button class="start" type="submit" disabled={!ready}>
+        {rematch ? 'Play' : 'Start game'}
+      </button>
+    </div>
     {#if !ready}
       <p class="hint">
         {#if mode === 'individuals'}
@@ -296,10 +373,10 @@
     gap: 0.5rem;
   }
   .player-row {
-    grid-template-columns: 2ch 1fr auto;
+    grid-template-columns: 2ch 1fr auto auto auto;
   }
   .team-row {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: 1fr auto auto auto;
   }
   .member-row {
     grid-template-columns: 2ch 1fr auto auto auto;
@@ -345,15 +422,6 @@
     background: #fff;
     cursor: pointer;
   }
-  .text-button {
-    padding: 0.55rem 0.6rem;
-    font: inherit;
-    font-size: 0.9rem;
-    border: none;
-    background: none;
-    text-decoration: underline;
-    cursor: pointer;
-  }
   .add {
     padding: 0.6rem;
     font: inherit;
@@ -362,9 +430,15 @@
     background: none;
     cursor: pointer;
   }
-  .start {
-    width: 100%;
+  .actions {
+    display: grid;
+    gap: 0.5rem;
     margin-top: 0.75rem;
+  }
+  .actions.with-cancel {
+    grid-template-columns: 1fr 2fr;
+  }
+  .start {
     padding: 0.9rem;
     font: inherit;
     font-size: 1.1rem;
@@ -373,6 +447,14 @@
     border: none;
     border-radius: 0.5rem;
     background: #2e7d32;
+    cursor: pointer;
+  }
+  .cancel {
+    padding: 0.9rem;
+    font: inherit;
+    border: 2px solid #bbb;
+    border-radius: 0.5rem;
+    background: #fff;
     cursor: pointer;
   }
   button:disabled {

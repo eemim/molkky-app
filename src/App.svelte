@@ -19,7 +19,11 @@
   {#if !view.state}
     <Setup />
   {:else if view.state.ended}
-    <Results />
+    {#if view.editingTeams}
+      <Setup rematch />
+    {:else}
+      <Results />
+    {/if}
   {:else}
     <Scoreboard />
     <NumberPad />
