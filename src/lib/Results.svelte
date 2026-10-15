@@ -1,16 +1,19 @@
 <script lang="ts">
-  import { view, undo, rematch, reset } from './gameStore.svelte';
+  import { view, undo, rematch, reset, editTeams } from './gameStore.svelte';
   import { ranking, rotateTurnOrder } from './molkky';
   import ThrowTable from './ThrowTable.svelte';
 
   let rows = $derived(view.state ? ranking(view.state) : []);
 
+  let isTeamGame = $derived(view.state?.players.some((player) => player.members.length > 0) ?? false);
+
+  // Who would throw first if the turn order changes for the rematch
+  let nextStarter = $derived(
+    view.state ? rotateTurnOrder(view.state.players.map((player) => player.name))[0] : ''
+  );
+
   let open = $state<number | null>(null);
   let rematchDialog = $state<HTMLDialogElement | undefined>(undefined);
-
-  let nextStarter = $derived(
-    view.state ? rotateTurnOrder(view.state.players.map((p) => p.name))[0] : ''
-  );
 
   function toggle(index: number) {
     open = open === index ? null : index;
@@ -20,9 +23,18 @@
     rematchDialog?.showModal();
   }
 
+  function closeRematchDialog() {
+    rematchDialog?.close();
+  }
+
   function startRematch(changeTurns: boolean) {
     rematchDialog?.close();
     rematch(changeTurns);
+  }
+
+  function startEditTeams() {
+    rematchDialog?.close();
+    editTeams();
   }
 </script>
 
@@ -64,15 +76,24 @@
     </div>
 
     <dialog bind:this={rematchDialog} aria-labelledby="rematch-title">
+      <button type="button" class="close" aria-label="Close" onclick={closeRematchDialog}>✕</button>
       <h2 id="rematch-title">Change turn order?</h2>
-      <p>The {nextStarter} would throw first, and everyone else moves one place later.</p>
+      <p>
+        {nextStarter} would throw first, and {isTeamGame ? 'the other teams' : 'everyone else'}
+        move one place later.
+        {#if isTeamGame}
+          Team members keep their own order.
+        {/if}
+      </p>
       <div class="dialog-actions">
         <button type="button" onclick={() => startRematch(false)}>Keep order</button>
         <button type="button" class="change-turns" onclick={() => startRematch(true)}>
           Change turns
         </button>
       </div>
-      <button type="button" class="cancel" onclick={() => rematchDialog?.close()}>Cancel</button>
+      {#if isTeamGame}
+        <button type="button" class="edit-teams" onclick={startEditTeams}>Edit teams</button>
+      {/if}
     </dialog>
   </section>
 {/if}
@@ -141,9 +162,22 @@
   }
   dialog h2 {
     margin: 0;
+    padding-right: 2rem;
   }
   dialog p {
     margin: 0.75rem 0 1.25rem;
+  }
+  .close {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    min-width: 2.5rem;
+    padding: 0.4rem;
+    font: inherit;
+    border: none;
+    border-radius: 0.5rem;
+    background: none;
+    cursor: pointer;
   }
   .dialog-actions {
     display: grid;
@@ -161,12 +195,14 @@
     background: #2e7d32;
     color: #fff;
   }
-  dialog .cancel {
+  .edit-teams {
     width: 100%;
     margin-top: 0.5rem;
-    padding: 0.5rem;
-    border: none;
-    background: none;
-    text-decoration: underline;
+    padding: 0.75rem;
+    font: inherit;
+    border: 2px solid #bbb;
+    border-radius: 0.5rem;
+    background: #fff;
+    cursor: pointer;
   }
 </style>
