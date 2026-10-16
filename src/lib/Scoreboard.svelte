@@ -16,7 +16,7 @@
 {#if view.state}
   {@const game = view.state}
   <ul class="scoreboard">
-    {#each game.players as player, index}
+    {#each game.players as player, index (index)}
       <li
         class:current={index === game.current && !game.ended}
         class:eliminated={player.eliminated}
@@ -30,7 +30,8 @@
               aria-expanded={open === index}
               onclick={() => toggle(index)}
             >
-              {open === index ? '▾' : '▸'} {player.name}
+              {open === index ? '▾' : '▸'}
+              {player.name}
             </button>
             {#if thrower && index === game.current}
               <span class="thrower">{thrower} is up</span>

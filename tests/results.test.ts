@@ -1,13 +1,13 @@
-import { describe, expect, it } from "vitest";
-import { canShowResults, endGame, newGame, ranking } from "../src/lib/molkky";
+import { describe, expect, it } from 'vitest';
+import { canShowResults, endGame, newGame, ranking } from '../src/lib/molkky';
 
 // -----------------------------------------------------------------------------
 // Results availability and completion
 // -----------------------------------------------------------------------------
 
-describe("results", () => {
-  it("enables results only after a player has finished and before the game ends", () => {
-    const state = newGame(["John", "Max"]);
+describe('results', () => {
+  it('enables results only after a player has finished and before the game ends', () => {
+    const state = newGame(['John', 'Max']);
 
     expect(canShowResults(state)).toBe(false);
 
@@ -18,14 +18,14 @@ describe("results", () => {
     expect(canShowResults(state)).toBe(false);
   });
 
-  it("does not end the game manually before a player finishes", () => {
-    const state = newGame(["John", "Max"]);
+  it('does not end the game manually before a player finishes', () => {
+    const state = newGame(['John', 'Max']);
 
     expect(endGame(state)).toBe(state);
   });
 
-  it("ends the game manually after a player finishes", () => {
-    const state = newGame(["John", "Max"]);
+  it('ends the game manually after a player finishes', () => {
+    const state = newGame(['John', 'Max']);
     state.finishCount = 1;
 
     expect(endGame(state)).toEqual({ ...state, ended: true });
@@ -36,15 +36,9 @@ describe("results", () => {
 // Final ranking
 // -----------------------------------------------------------------------------
 
-describe("ranking", () => {
-  it("orders finishers, active players by score with tied ranks, then dropped players", () => {
-    const state = newGame([
-      "First",
-      "Second",
-      "Tied",
-      "Dropped first",
-      "Dropped last",
-    ]);
+describe('ranking', () => {
+  it('orders finishers, active players by score with tied ranks, then dropped players', () => {
+    const state = newGame(['First', 'Second', 'Tied', 'Dropped first', 'Dropped last']);
     const [first, second, tied, droppedFirst, droppedLast] = state.players;
 
     first.score = 50;
@@ -65,14 +59,14 @@ describe("ranking", () => {
     ]);
   });
 
-  it("orders several finishers by finishing order", () => {
-    const state = newGame(["John", "Max", "Jane"]);
+  it('orders several finishers by finishing order', () => {
+    const state = newGame(['John', 'Max', 'Jane']);
     state.players[0].finishedAt = 2;
     state.players[1].finishedAt = 1;
     state.players[2].score = 20;
 
     const names = ranking(state).map((r) => r.player.name);
 
-    expect(names).toEqual(["Max", "John", "Jane"]);
+    expect(names).toEqual(['Max', 'John', 'Jane']);
   });
 });

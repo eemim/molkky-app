@@ -10,9 +10,7 @@
   let finished = $derived(view.state?.ended ?? true);
 
   function toggle(pin: number) {
-    selected = selected.includes(pin)
-      ? selected.filter((p) => p !== pin)
-      : [...selected, pin];
+    selected = selected.includes(pin) ? selected.filter((p) => p !== pin) : [...selected, pin];
   }
 
   function confirm() {
@@ -29,7 +27,7 @@
 {#if view.state}
   <section class="pad">
     <div class="grid">
-      {#each pinNumbers as pin}
+      {#each pinNumbers as pin (pin)}
         <button
           type="button"
           class:on={selected.includes(pin)}

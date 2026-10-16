@@ -9,10 +9,7 @@
 
 <svelte:head>
   <title>Molkky</title>
-  <meta
-    name="description"
-    content="Keep score for Molkky, for individual players or for teams."
-  />
+  <meta name="description" content="Keep score for Molkky, for individual players or for teams." />
 </svelte:head>
 
 <main>

@@ -25,8 +25,11 @@
     }
 
     if (removed > 0) {
-      const throws = removed === 1 ? '1 later throw no longer fits' : `${removed} later throws no longer fit`;
-      const ok = confirm(`This changes the game from this throw onward, and ${throws}. They will be removed. Continue?`);
+      const throws =
+        removed === 1 ? '1 later throw no longer fits' : `${removed} later throws no longer fit`;
+      const ok = confirm(
+        `This changes the game from this throw onward, and ${throws}. They will be removed. Continue?`,
+      );
       if (!ok) {
         select.value = String(row.points);
         return;
@@ -51,7 +54,7 @@
         </tr>
       </thead>
       <tbody>
-        {#each summary as stat}
+        {#each summary as stat (stat)}
           <tr>
             <td>{stat.name}</td>
             <td>{stat.throws}</td>
@@ -76,7 +79,7 @@
       </tr>
     </thead>
     <tbody>
-      {#each rows as row}
+      {#each rows as row (row.index)}
         <tr class:miss={row.points === 0}>
           <td>{row.round}</td>
           {#if isTeam}
@@ -90,7 +93,7 @@
                   : `Round ${row.round} points`}
                 onchange={(event) => change(row, event.currentTarget)}
               >
-                {#each options as option}
+                {#each options as option (option)}
                   <option value={option} selected={option === row.points}>
                     {option === 0 ? 'miss' : option}
                   </option>

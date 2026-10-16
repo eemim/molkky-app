@@ -3,12 +3,13 @@ import {
   rotateTurnOrder,
   validRoster,
   type GameState,
+  type LogEntry,
   type SavedGame,
   type ThrowRow,
-} from "./molkky";
+} from './molkky';
 
-const STORAGE_KEY = "molkky-game-v2";
-const OLD_STORAGE_KEY = "molkky-game-v1";
+const STORAGE_KEY = 'molkky-game-v2';
+const OLD_STORAGE_KEY = 'molkky-game-v1';
 
 let game: Game | null = null;
 
@@ -38,19 +39,24 @@ function save() {
   }
 }
 
-function isValidSaved(s: any): s is SavedGame {
+// For lintershit
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function isLogEntry(entry: unknown): entry is LogEntry {
+  if (!isRecord(entry)) return false;
+  if (entry.type === 'results') return true;
+
+  return entry.type === 'throw' && Number.isInteger(entry.player) && Number.isInteger(entry.points);
+}
+
+function isValidSaved(saved: unknown): saved is SavedGame {
   return (
-    s &&
-    validRoster(s.names, s.members) &&
-    Array.isArray(s.log) &&
-    s.log.every(
-      (e: any) =>
-        e &&
-        (e.type === "results" ||
-          (e.type === "throw" &&
-            Number.isInteger(e.player) &&
-            Number.isInteger(e.points))),
-    )
+    isRecord(saved) &&
+    validRoster(saved.names, saved.members) &&
+    Array.isArray(saved.log) &&
+    saved.log.every(isLogEntry)
   );
 }
 
