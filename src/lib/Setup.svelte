@@ -30,7 +30,7 @@
       : [
           { name: 'Team 1', members: ['Player 1'] },
           { name: 'Team 2', members: ['Player 2'] },
-        ]
+        ],
   );
 
   let memberCount = $derived(teams.reduce((total, team) => total + team.members.length, 0));
@@ -40,9 +40,7 @@
   let teamMembers = $derived(teams.map((team) => team.members.map((name) => name.trim())));
 
   let ready = $derived(
-    mode === 'individuals'
-      ? validRoster(individualNames)
-      : validRoster(teamNames, teamMembers)
+    mode === 'individuals' ? validRoster(individualNames) : validRoster(teamNames, teamMembers),
   );
 
   function startGame() {
@@ -139,7 +137,7 @@
         </div>
 
         <div class="list">
-          {#each players as player, index}
+          {#each players as player, index (index)}
             <div class="row player-row">
               <span class="number" aria-hidden="true">{index + 1}</span>
               <input
@@ -195,7 +193,7 @@
           <span>{teams.length}</span>
         </div>
 
-        {#each teams as team, teamIndex}
+        {#each teams as team, teamIndex (teamIndex)}
           <fieldset class="team">
             <legend class="visually-hidden">Team {teamIndex + 1}</legend>
 
@@ -238,7 +236,7 @@
             </div>
 
             <ol class="members">
-              {#each team.members as member, memberIndex}
+              {#each team.members as member, memberIndex (memberIndex)}
                 <li class="row member-row">
                   <span class="number" aria-hidden="true">{memberIndex + 1}</span>
                   <input

@@ -5,11 +5,13 @@
 
   let rows = $derived(view.state ? ranking(view.state) : []);
 
-  let isTeamGame = $derived(view.state?.players.some((player) => player.members.length > 0) ?? false);
+  let isTeamGame = $derived(
+    view.state?.players.some((player) => player.members.length > 0) ?? false,
+  );
 
   // Who would throw first if the turn order changes for the rematch
   let nextStarter = $derived(
-    view.state ? rotateTurnOrder(view.state.players.map((player) => player.name))[0] : ''
+    view.state ? rotateTurnOrder(view.state.players.map((player) => player.name))[0] : '',
   );
 
   let open = $state<number | null>(null);
@@ -43,7 +45,7 @@
     <h1>{rows[0].player.name} wins!</h1>
 
     <ol>
-      {#each rows as { player, rank }}
+      {#each rows as { player, rank }, position (position)}
         {@const index = view.state.players.indexOf(player)}
         <li class:finished={player.finishedAt !== null} class:eliminated={player.eliminated}>
           <div class="row">
@@ -54,7 +56,8 @@
               aria-expanded={open === index}
               onclick={() => toggle(index)}
             >
-              {open === index ? '▾' : '▸'} {player.name}
+              {open === index ? '▾' : '▸'}
+              {player.name}
             </button>
             <span class="status">
               {player.finishedAt !== null ? 'reached 50' : player.eliminated ? 'out' : ''}

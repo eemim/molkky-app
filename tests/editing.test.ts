@@ -1,14 +1,14 @@
-import { describe, expect, it } from "vitest";
-import { Game } from "../src/lib/molkky";
-import { gameWithOneFinisher } from "./helpers";
+import { describe, expect, it } from 'vitest';
+import { Game } from '../src/lib/molkky';
+import { gameWithOneFinisher } from './helpers';
 
 // -----------------------------------------------------------------------------
 // Editing the table
 // -----------------------------------------------------------------------------
 
-describe("editing a throw", () => {
-  it("changes an earlier throw and everything that follows from it", () => {
-    const game = new Game(["John", "Jane"]);
+describe('editing a throw', () => {
+  it('changes an earlier throw and everything that follows from it', () => {
+    const game = new Game(['John', 'Jane']);
     game.throw([6]); // John
     game.throw([2, 9]); // Jane, two pins = 2 points
     game.throw([4]); // John
@@ -21,8 +21,8 @@ describe("editing a throw", () => {
     expect(game.throws[0].map((row) => row.points)).toEqual([9, 4]);
   });
 
-  it("removes later throws that no longer fit", () => {
-    const game = new Game(["John", "Jane"]);
+  it('removes later throws that no longer fit', () => {
+    const game = new Game(['John', 'Jane']);
     // John: 5, miss, miss, 3. Jane: 1, 1, 1.
     for (const pins of [[5], [1], [], [1], [], [1], [3]]) {
       game.throw(pins);
@@ -38,8 +38,8 @@ describe("editing a throw", () => {
     expect(game.state.ended).toBe(true);
   });
 
-  it("previews an edit without changing the game", () => {
-    const game = new Game(["John", "Jane"]);
+  it('previews an edit without changing the game', () => {
+    const game = new Game(['John', 'Jane']);
     for (const pins of [[5], [1], [], [1], [], [1], [3]]) {
       game.throw(pins);
     }
@@ -52,7 +52,7 @@ describe("editing a throw", () => {
     expect(game.state.ended).toBe(false);
   });
 
-  it("rejects edits that make no sense", () => {
+  it('rejects edits that make no sense', () => {
     const game = gameWithOneFinisher();
     game.showResults();
 
@@ -63,8 +63,8 @@ describe("editing a throw", () => {
     expect(game.previewEdit(0, 1.5)).toBeNull();
   });
 
-  it("restores an edited game from its saved log", () => {
-    const game = new Game(["John", "Jane"]);
+  it('restores an edited game from its saved log', () => {
+    const game = new Game(['John', 'Jane']);
     game.throw([6]);
     game.throw([2, 9]);
     game.throw([4]);
@@ -76,8 +76,8 @@ describe("editing a throw", () => {
     expect(restored!.state).toEqual(game.state);
   });
 
-  it("undo after an edit removes the last throw, not the edit", () => {
-    const game = new Game(["John", "Jane"]);
+  it('undo after an edit removes the last throw, not the edit', () => {
+    const game = new Game(['John', 'Jane']);
     game.throw([6]);
     game.throw([2, 9]);
     game.throw([4]);
@@ -89,8 +89,8 @@ describe("editing a throw", () => {
     expect(game.saved.log).toHaveLength(2);
   });
 
-  it("drops only the later throws of a player who is now out", () => {
-    const game = new Game(["John", "Jane", "Max"]);
+  it('drops only the later throws of a player who is now out', () => {
+    const game = new Game(['John', 'Jane', 'Max']);
     // Round by round. John misses in rounds 1 and 2, then scores 6 in round 3.
     const throws = [
       [],
@@ -121,8 +121,8 @@ describe("editing a throw", () => {
     expect(game.state.current).toBe(2); // still Max's turn
   });
 
-  it("cuts the log when an edit puts a player back in the game", () => {
-    const game = new Game(["John", "Jane", "Max"]);
+  it('cuts the log when an edit puts a player back in the game', () => {
+    const game = new Game(['John', 'Jane', 'Max']);
     const throws = [
       [],
       [3],

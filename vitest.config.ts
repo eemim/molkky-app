@@ -7,7 +7,7 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'html', 'json-summary'],
       reportsDirectory: 'coverage',
-      include: ['src/lib/molkky.ts'],
+      include: ['src/lib/molkky.ts', 'src/lib/list.ts'],
       exclude: ['src/**/*.svelte', 'src/main.ts', 'src/app.css'],
     },
   },
