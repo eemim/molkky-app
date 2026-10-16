@@ -1,0 +1,18 @@
+version: 2
+
+updates:
+  # Keeps the versions of the actions in the workflows current
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+
+  # One grouped pull request per month for npm packages, to keep the noise low
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      npm-dependencies:
+        patterns:
+          - '*'
