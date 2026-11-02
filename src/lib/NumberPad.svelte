@@ -31,22 +31,10 @@
 
 {#if view.state}
   <section class="pad">
-<<<<<<< HEAD
-    <div class="grid">
-      {#each pinNumbers as pin (pin)}
-        <button
-          type="button"
-          class:on={selected.includes(pin)}
-          disabled={finished}
-          onclick={() => toggle(pin)}
-        >
-          {pin}
-        </button>
-=======
     <div class="pin-layout" aria-label="Select knocked-down pins">
-      {#each pinRows as row}
+      {#each pinRows as row (row)}
         <div class="pin-row">
-          {#each row as pin}
+          {#each row as pin (pin)}
             {@const isSelected = selected.includes(pin)}
             <button
               type="button"
@@ -60,7 +48,6 @@
             </button>
           {/each}
         </div>
->>>>>>> 3cd5189 (Pins)
       {/each}
     </div>
 
