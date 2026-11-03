@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { untrack } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import { start, view, cancelEditTeams } from './gameStore.svelte';
   import { MAX_TEAM_SIZE, validRoster } from './molkky';
   import { moveItem } from './list';
@@ -23,17 +23,16 @@
   let mode = $state<Mode>(editingFinishedGame ? 'teams' : 'individuals');
 
   // Each tab keeps its own form, so switching tabs loses nothing.
-  let players = $state<string[]>(['Player 1', 'Player 2']);
+  // Names start empty: the italic placeholders only hint at what goes there.
+  let players = $state<string[]>(['', '']);
   let teams = $state<Team[]>(
     editingFinishedGame
       ? finishedTeams()
       : [
-          { name: 'Team 1', members: ['Player 1'] },
-          { name: 'Team 2', members: ['Player 2'] },
+          { name: '', members: [''] },
+          { name: '', members: [''] },
         ],
   );
-
-  let memberCount = $derived(teams.reduce((total, team) => total + team.members.length, 0));
 
   let individualNames = $derived(players.map((name) => name.trim()));
   let teamNames = $derived(teams.map((team) => team.name.trim()));
@@ -43,15 +42,39 @@
     mode === 'individuals' ? validRoster(individualNames) : validRoster(teamNames, teamMembers),
   );
 
-  function startGame() {
-    if (!ready) return;
+  // Errors only show after the first attempt to start, so an empty form is not shouted at
+  let submitted = $state(false);
+  let form = $state<HTMLFormElement | undefined>(undefined);
+  const errorId = $props.id();
+
+  const missing = (name: string) => submitted && name.trim() === '';
+
+  let errorMessage = $derived(
+    mode === 'individuals'
+      ? 'Every player needs a name. Fill in the highlighted fields.'
+      : 'Every team and every member needs a name. Fill in the highlighted fields.',
+  );
+
+  function selectMode(next: Mode) {
+    mode = next;
+    submitted = false;
+  }
+
+  async function startGame() {
+    if (!ready) {
+      submitted = true;
+      // Wait for the error styling to render, then take the person to the first gap
+      await tick();
+      form?.querySelector<HTMLElement>('input[aria-invalid="true"]')?.focus();
+      return;
+    }
 
     if (mode === 'individuals') start(individualNames);
     else start(teamNames, teamMembers);
   }
 
   function addPlayer() {
-    players.push(`Player ${players.length + 1}`);
+    players.push('');
   }
 
   function removePlayer(index: number) {
@@ -63,7 +86,7 @@
   }
 
   function addTeam() {
-    teams.push({ name: `Team ${teams.length + 1}`, members: [`Player ${memberCount + 1}`] });
+    teams.push({ name: '', members: [''] });
   }
 
   function removeTeam(index: number) {
@@ -77,7 +100,7 @@
   function addMember(teamIndex: number) {
     const team = teams[teamIndex];
     if (team.members.length >= MAX_TEAM_SIZE) return;
-    team.members.push(`Player ${memberCount + 1}`);
+    team.members.push('');
   }
 
   function removeMember(teamIndex: number, memberIndex: number) {
@@ -103,7 +126,7 @@
         aria-selected={mode === 'individuals'}
         aria-controls="setup-panel"
         class:active={mode === 'individuals'}
-        onclick={() => (mode = 'individuals')}
+        onclick={() => selectMode('individuals')}
       >
         Individuals
       </button>
@@ -114,7 +137,7 @@
         aria-selected={mode === 'teams'}
         aria-controls="setup-panel"
         class:active={mode === 'teams'}
-        onclick={() => (mode = 'teams')}
+        onclick={() => selectMode('teams')}
       >
         Teams
       </button>
@@ -122,6 +145,8 @@
   {/if}
 
   <form
+    bind:this={form}
+    novalidate
     onsubmit={(event) => {
       event.preventDefault();
       startGame();
@@ -143,9 +168,10 @@
               <input
                 type="text"
                 bind:value={players[index]}
-                placeholder={`Player ${index + 1}`}
+                placeholder="Player"
                 aria-label={`Player ${index + 1} name`}
-                aria-invalid={player.trim() === ''}
+                aria-invalid={missing(player)}
+                aria-describedby={missing(player) ? errorId : undefined}
               />
               <button
                 type="button"
@@ -202,9 +228,10 @@
                 type="text"
                 class="team-name"
                 bind:value={team.name}
-                placeholder={`Team ${teamIndex + 1}`}
+                placeholder="Team"
                 aria-label={`Team ${teamIndex + 1} name`}
-                aria-invalid={team.name.trim() === ''}
+                aria-invalid={missing(team.name)}
+                aria-describedby={missing(team.name) ? errorId : undefined}
               />
               <button
                 type="button"
@@ -242,9 +269,10 @@
                   <input
                     type="text"
                     bind:value={team.members[memberIndex]}
-                    placeholder={`Member ${memberIndex + 1}`}
+                    placeholder="Player"
                     aria-label={`Team ${teamIndex + 1} member ${memberIndex + 1} name`}
-                    aria-invalid={member.trim() === ''}
+                    aria-invalid={missing(member)}
+                    aria-describedby={missing(member) ? errorId : undefined}
                   />
                   <button
                     type="button"
@@ -295,23 +323,16 @@
       {/if}
     </div>
 
+    {#if submitted && !ready}
+      <p id={errorId} class="error" role="alert">{errorMessage}</p>
+    {/if}
+
     <div class="actions" class:with-cancel={rematch}>
       {#if rematch}
         <button class="cancel" type="button" onclick={cancelEditTeams}>Cancel</button>
       {/if}
-      <button class="start" type="submit" disabled={!ready}>
-        {rematch ? 'Play' : 'Start game'}
-      </button>
+      <button class="start" type="submit">{rematch ? 'Play' : 'Start game'}</button>
     </div>
-    {#if !ready}
-      <p class="hint">
-        {#if mode === 'individuals'}
-          Give every player a name. You need at least two players.
-        {:else}
-          Give every team and member a name. You need at least two teams.
-        {/if}
-      </p>
-    {/if}
   </form>
 </section>
 
@@ -390,8 +411,18 @@
     border: 2px solid #bbb;
     border-radius: 0.5rem;
   }
+  input::placeholder {
+    font-style: italic;
+    color: #767676;
+  }
   input[aria-invalid='true'] {
     border-color: #c62828;
+  }
+  .error {
+    margin: 0.5rem 0 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #c62828;
   }
   .team-name {
     font-weight: 700;
@@ -459,14 +490,10 @@
     opacity: 0.4;
     cursor: default;
   }
-  .hint,
-  .note {
-    margin: 0.5rem 0 0;
-    font-size: 0.9rem;
-    color: #666;
-  }
   .note {
     margin: 0;
+    font-size: 0.9rem;
+    color: #666;
   }
   .visually-hidden {
     position: absolute;
