@@ -2,6 +2,7 @@
   import { view, undo, rematch, reset, editTeams } from './gameStore.svelte';
   import { ranking, rotateTurnOrder } from './molkky';
   import ThrowTable from './ThrowTable.svelte';
+  import Modal from './Modal.svelte';
 
   let rows = $derived(view.state ? ranking(view.state) : []);
 
@@ -15,18 +16,14 @@
   );
 
   let open = $state<number | null>(null);
-  let rematchDialog = $state<HTMLDialogElement | undefined>(undefined);
+  let rematchDialog = $state<ReturnType<typeof Modal> | undefined>(undefined);
 
   function toggle(index: number) {
     open = open === index ? null : index;
   }
 
   function openRematchDialog() {
-    rematchDialog?.showModal();
-  }
-
-  function closeRematchDialog() {
-    rematchDialog?.close();
+    rematchDialog?.open();
   }
 
   function startRematch(changeTurns: boolean) {
@@ -78,9 +75,7 @@
       <button type="button" onclick={reset}>New game</button>
     </div>
 
-    <dialog bind:this={rematchDialog} aria-labelledby="rematch-title">
-      <button type="button" class="close" aria-label="Close" onclick={closeRematchDialog}>✕</button>
-      <h2 id="rematch-title">Change turn order?</h2>
+    <Modal bind:this={rematchDialog} title="Change turn order?">
       <p>
         {nextStarter} would throw first, and {isTeamGame ? 'the other teams' : 'everyone else'}
         move one place later.
@@ -88,16 +83,16 @@
           Team members keep their own order.
         {/if}
       </p>
-      <div class="dialog-actions">
+      {#snippet actions()}
         <button type="button" onclick={() => startRematch(false)}>Keep order</button>
-        <button type="button" class="change-turns" onclick={() => startRematch(true)}>
+        <button type="button" class="primary" onclick={() => startRematch(true)}>
           Change turns
         </button>
-      </div>
-      {#if isTeamGame}
-        <button type="button" class="edit-teams" onclick={startEditTeams}>Edit teams</button>
-      {/if}
-    </dialog>
+        {#if isTeamGame}
+          <button type="button" class="wide" onclick={startEditTeams}>Edit teams</button>
+        {/if}
+      {/snippet}
+    </Modal>
   </section>
 {/if}
 
@@ -152,60 +147,5 @@
     border: 2px solid #bbb;
     border-radius: 0.5rem;
     background: #fff;
-  }
-  dialog {
-    width: min(calc(100% - 2rem), 28rem);
-    padding: 1.5rem;
-    border: 0;
-    border-radius: 0.75rem;
-    box-shadow: 0 1rem 3rem rgb(0 0 0 / 20%);
-  }
-  dialog::backdrop {
-    background: rgb(0 0 0 / 45%);
-  }
-  dialog h2 {
-    margin: 0;
-    padding-right: 2rem;
-  }
-  dialog p {
-    margin: 0.75rem 0 1.25rem;
-  }
-  .close {
-    position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
-    min-width: 2.5rem;
-    padding: 0.4rem;
-    font: inherit;
-    border: none;
-    border-radius: 0.5rem;
-    background: none;
-    cursor: pointer;
-  }
-  .dialog-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.5rem;
-  }
-  .dialog-actions button {
-    padding: 0.75rem;
-    border: 2px solid #bbb;
-    border-radius: 0.5rem;
-    background: #fff;
-  }
-  .dialog-actions .change-turns {
-    border-color: #2e7d32;
-    background: #2e7d32;
-    color: #fff;
-  }
-  .edit-teams {
-    width: 100%;
-    margin-top: 0.5rem;
-    padding: 0.75rem;
-    font: inherit;
-    border: 2px solid #bbb;
-    border-radius: 0.5rem;
-    background: #fff;
-    cursor: pointer;
   }
 </style>

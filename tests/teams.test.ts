@@ -102,8 +102,8 @@ describe('who throws', () => {
   });
 
   it('names nobody for individuals or when the game is over', () => {
-    const solo = new Game(['John', 'Jane']);
-    expect(currentThrower(solo.state, solo.throws)).toBeNull();
+    const individuals = new Game(['John', 'Jane']);
+    expect(currentThrower(individuals.state, individuals.throws)).toBeNull();
 
     const over = new Game(names, members);
     for (const pins of [[], [1], [], [1], []]) over.throw(pins); // Red is out
