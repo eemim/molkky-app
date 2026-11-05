@@ -29,3 +29,6 @@ refactoring.md
 # Personal Claude Code instructions
 CLAUDE.local.md
 .claude/settings.local.json
+
+# Large third-party skill, installed locally (see skills-lock.json)
+.claude/skills/ui-ux-pro-max/
