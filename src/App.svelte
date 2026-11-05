@@ -22,8 +22,19 @@
       <Results />
     {/if}
   {:else}
-    <Scoreboard />
-    <NumberPad />
-    <Controls />
+    <div class="game">
+      <Scoreboard />
+      <NumberPad />
+      <Controls />
+    </div>
   {/if}
 </main>
+
+<style>
+  /* One block, so main centers the whole game screen instead of spreading space between its parts. */
+  .game {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+</style>
