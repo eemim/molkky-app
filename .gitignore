@@ -25,3 +25,7 @@ coverage
 
 # Local code-audit notes
 refactoring.md
+
+# Personal Claude Code instructions
+CLAUDE.local.md
+.claude/settings.local.json
