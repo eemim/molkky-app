@@ -126,34 +126,39 @@
     border-collapse: collapse;
     font-size: 0.95rem;
   }
-  .summary {
+  .summary,
+  .throws {
     margin-bottom: 0.75rem;
   }
   th {
     text-align: left;
     font-weight: 600;
     font-size: 0.8rem;
-    color: #666;
+    color: var(--text-muted);
     padding: 0.25rem 0.5rem;
   }
   td {
     padding: 0.35rem 0.5rem;
-    border-top: 1px solid #ddd;
+    border-top: 1px solid var(--line);
   }
   select {
-    font: inherit;
-    padding: 0.15rem 0.25rem;
+    min-height: 44px;
+    padding: 0.5rem;
+    border: 2px solid var(--border);
+    border-radius: 0.5rem;
+    background: var(--surface);
   }
-  .miss .points {
-    color: #c62828;
+  .miss .points,
+  .miss select {
+    color: var(--danger);
   }
   .note {
     font-size: 0.8rem;
-    color: #555;
+    color: var(--text-muted);
   }
   .empty {
-    margin: 0.5rem 0 0;
+    margin: 0.5rem 0;
     font-size: 0.9rem;
-    color: #666;
+    color: var(--text-muted);
   }
 </style>

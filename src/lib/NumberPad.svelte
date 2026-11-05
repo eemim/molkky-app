@@ -52,10 +52,10 @@
     </div>
 
     <div class="actions">
-      <button type="button" class="miss" disabled={finished} onclick={miss}>Miss</button>
+      <button type="button" class="btn miss" disabled={finished} onclick={miss}>Miss</button>
       <button
         type="button"
-        class="confirm"
+        class="btn btn-primary"
         disabled={finished || selected.length === 0}
         onclick={confirm}
       >
@@ -89,7 +89,12 @@
     width: var(--pin);
     height: var(--pin);
     padding: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    border: 2px solid var(--border);
     border-radius: 50%;
+    background: var(--surface);
+    color: var(--text);
     transition:
       background-color 120ms ease,
       border-color 120ms ease,
@@ -107,33 +112,24 @@
       transform: none;
     }
   }
-  button {
-    padding: 1rem 0;
-    font-size: 1.25rem;
-    border: 2px solid #bbb;
-    border-radius: 0.5rem;
-    background: #fff;
+  .pin.on {
+    border-color: var(--primary);
+    background: var(--primary);
+    color: var(--on-primary);
   }
-  button.on {
-    background: #2e7d32;
-    border-color: #2e7d32;
-    color: #fff;
-  }
-  button:disabled {
-    opacity: 0.4;
+  .pin:disabled {
+    opacity: 0.45;
   }
   .actions {
     display: grid;
     grid-template-columns: 1fr 2fr;
     gap: 0.5rem;
   }
-  .miss {
-    border-color: #c62828;
-    color: #c62828;
+  .actions .btn {
+    font-size: 1.125rem;
   }
-  .confirm {
-    background: #2e7d32;
-    border-color: #2e7d32;
-    color: #fff;
+  .miss {
+    border-color: var(--danger);
+    color: var(--danger);
   }
 </style>

@@ -15,20 +15,25 @@
 
 {#if view.state}
   <div class="controls">
-    <button type="button" onclick={undo}>Undo</button>
-    <button type="button" class="results" disabled={!resultsReady} onclick={showResults}>
+    <button type="button" class="btn" onclick={undo}>Undo</button>
+    <button type="button" class="btn results" disabled={!resultsReady} onclick={showResults}>
       Results
     </button>
-    <button type="button" onclick={() => confirmDialog?.open()}>New game</button>
+    <button type="button" class="btn" onclick={() => confirmDialog?.open()}>New game</button>
   </div>
 
   <Modal bind:this={confirmDialog} title="Start a new game?">
     <p>The game in progress will be lost.</p>
     {#snippet actions()}
-      <button type="button" class="primary" data-autofocus onclick={() => confirmDialog?.close()}>
+      <button
+        type="button"
+        class="btn btn-primary"
+        data-autofocus
+        onclick={() => confirmDialog?.close()}
+      >
         Keep playing
       </button>
-      <button type="button" class="danger" onclick={startNewGame}>New game</button>
+      <button type="button" class="btn btn-danger" onclick={startNewGame}>New game</button>
     {/snippet}
   </Modal>
 {/if}
@@ -40,19 +45,9 @@
     gap: 0.5rem;
     margin-top: 0.75rem;
   }
-  .controls button {
-    padding: 0.75rem 0;
-    font-size: 1rem;
-    border: 2px solid #bbb;
-    border-radius: 0.5rem;
-    background: #fff;
-  }
-  .controls button:disabled {
-    opacity: 0.4;
-  }
   .results:not(:disabled) {
-    background: #2e7d32;
-    border-color: #2e7d32;
-    color: #fff;
+    border-color: var(--primary);
+    background: var(--primary);
+    color: var(--on-primary);
   }
 </style>

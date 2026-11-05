@@ -33,11 +33,13 @@
     width: min(calc(100% - 2rem), 28rem);
     padding: 1.5rem;
     border: 0;
+    background: var(--surface);
+    color: var(--text);
     border-radius: 0.75rem;
     box-shadow: 0 1rem 3rem rgb(0 0 0 / 20%);
   }
   dialog::backdrop {
-    background: rgb(0 0 0 / 45%);
+    background: rgb(31 43 32 / 55%);
   }
   h2 {
     margin: 0;
@@ -53,9 +55,11 @@
     position: absolute;
     top: 0.5rem;
     right: 0.5rem;
-    min-width: 2.5rem;
-    padding: 0.4rem;
-    font: inherit;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
     border: none;
     border-radius: 0.5rem;
     background: none;
@@ -66,25 +70,7 @@
     grid-template-columns: 1fr 1fr;
     gap: 0.5rem;
   }
-  .actions :global(button) {
-    padding: 0.75rem;
-    font: inherit;
-    border: 2px solid #bbb;
-    border-radius: 0.5rem;
-    background: #fff;
-    cursor: pointer;
-  }
-  .actions :global(button.primary) {
-    border-color: #2e7d32;
-    background: #2e7d32;
-    color: #fff;
-  }
-  .actions :global(button.danger) {
-    border-color: #c62828;
-    background: #c62828;
-    color: #fff;
-  }
-  .actions :global(button.wide) {
+  .actions :global(.wide) {
     grid-column: 1 / -1;
   }
 </style>

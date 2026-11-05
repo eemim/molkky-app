@@ -70,9 +70,10 @@
     </ol>
 
     <div class="actions">
-      <button type="button" onclick={undo}>Back to game</button>
-      <button type="button" onclick={openRematchDialog}>Rematch</button>
-      <button type="button" onclick={reset}>New game</button>
+      <button type="button" class="btn btn-primary wide" onclick={openRematchDialog}>Rematch</button
+      >
+      <button type="button" class="btn" onclick={undo}>Back to game</button>
+      <button type="button" class="btn" onclick={reset}>New game</button>
     </div>
 
     <Modal bind:this={rematchDialog} title="Change turn order?">
@@ -84,12 +85,12 @@
         {/if}
       </p>
       {#snippet actions()}
-        <button type="button" onclick={() => startRematch(false)}>Keep order</button>
-        <button type="button" class="primary" onclick={() => startRematch(true)}>
+        <button type="button" class="btn" onclick={() => startRematch(false)}>Keep order</button>
+        <button type="button" class="btn btn-primary" onclick={() => startRematch(true)}>
           Change turns
         </button>
         {#if isTeamGame}
-          <button type="button" class="wide" onclick={startEditTeams}>Edit teams</button>
+          <button type="button" class="btn wide" onclick={startEditTeams}>Edit teams</button>
         {/if}
       {/snippet}
     </Modal>
@@ -97,6 +98,9 @@
 {/if}
 
 <style>
+  .results {
+    width: min(100%, 32rem);
+  }
   ol {
     list-style: none;
     padding: 0;
@@ -105,15 +109,18 @@
     gap: 0.5rem;
   }
   li {
-    padding: 0.75rem 1rem;
-    border-radius: 0.5rem;
-    background: #f3f3f3;
+    padding: 0.25rem 1rem;
+    border: 1px solid var(--line);
+    border-radius: 0.625rem;
+    background: var(--surface);
   }
   li.finished {
-    background: #c8e6c9;
+    border-color: var(--primary);
+    background: var(--success-bg);
   }
   li.eliminated .row {
-    opacity: 0.5;
+    color: var(--text-muted);
+    text-decoration: line-through;
   }
   .row {
     display: grid;
@@ -127,25 +134,21 @@
   }
   .status {
     font-size: 0.85rem;
+    color: var(--text-muted);
   }
   .name {
+    min-height: 44px;
+    padding: 0.5rem 0;
     text-align: left;
-    font: inherit;
-    padding: 0;
     border: none;
     background: none;
-    cursor: pointer;
   }
   .actions {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: 1fr 1fr;
     gap: 0.5rem;
   }
-  .actions button {
-    padding: 0.75rem 0;
-    font-size: 1rem;
-    border: 2px solid #bbb;
-    border-radius: 0.5rem;
-    background: #fff;
+  .wide {
+    grid-column: 1 / -1;
   }
 </style>
