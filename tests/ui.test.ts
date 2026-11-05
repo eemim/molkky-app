@@ -51,7 +51,7 @@ describe('New game confirmation', () => {
     render(Controls);
     button('New game').click();
     flushSync();
-    dialog().querySelector<HTMLButtonElement>('.danger')!.click();
+    dialog().querySelector<HTMLButtonElement>('.btn-danger')!.click();
     flushSync();
     expect(view.state).toBeNull();
   });

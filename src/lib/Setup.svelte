@@ -329,9 +329,9 @@
 
     <div class="actions" class:with-cancel={rematch}>
       {#if rematch}
-        <button class="cancel" type="button" onclick={cancelEditTeams}>Cancel</button>
+        <button class="btn cancel" type="button" onclick={cancelEditTeams}>Cancel</button>
       {/if}
-      <button class="start" type="submit">{rematch ? 'Play' : 'Start game'}</button>
+      <button class="btn btn-primary start" type="submit">{rematch ? 'Play' : 'Start game'}</button>
     </div>
   </form>
 </section>
@@ -340,40 +340,52 @@
   .setup-card {
     display: grid;
     gap: 0.75rem;
+    width: min(100%, 560px);
+    padding: clamp(20px, 6vw, 44px);
+    border: 1px solid var(--line);
+    border-radius: clamp(18px, 4vw, 24px);
+    background: var(--surface);
+    box-shadow: 0 20px 50px rgb(55 45 25 / 12%);
   }
   .eyebrow {
     font-size: 0.85rem;
     font-weight: 600;
     letter-spacing: 0.05em;
     text-transform: uppercase;
-    color: #2e7d32;
+    color: var(--primary);
   }
   h1 {
     margin: 0;
   }
+  form {
+    margin-top: 1.5rem;
+  }
   .intro {
     margin: 0 0 0.75rem;
+    color: var(--text-muted);
   }
   .tabs {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 0.25rem;
     padding: 0.25rem;
-    border-radius: 0.5rem;
-    background: #eee;
+    border: 1px solid var(--line);
+    border-radius: 0.625rem;
+    background: var(--surface-muted);
   }
   .tabs button {
-    padding: 0.6rem 0;
-    font: inherit;
+    min-height: 44px;
+    padding: 0.5rem;
     border: none;
-    border-radius: 0.4rem;
+    border-radius: 0.45rem;
     background: none;
-    cursor: pointer;
+    color: var(--text-muted);
   }
   .tabs button.active {
-    background: #fff;
+    background: var(--surface);
+    color: var(--text);
     font-weight: 700;
-    box-shadow: 0 1px 3px rgb(0 0 0 / 20%);
+    box-shadow: 0 1px 3px rgb(31 43 32 / 25%);
   }
   .list-heading {
     display: flex;
@@ -401,28 +413,35 @@
     grid-template-columns: 2ch 1fr auto auto auto;
   }
   .number {
-    color: #666;
+    color: var(--text-muted);
     text-align: right;
   }
   input {
+    width: 100%;
     min-width: 0;
+    min-height: 44px;
     padding: 0.6rem;
-    font: inherit;
-    border: 2px solid #bbb;
+    border: 2px solid var(--border);
     border-radius: 0.5rem;
+    outline: none;
+    background: var(--surface);
   }
   input::placeholder {
     font-style: italic;
-    color: #767676;
+    color: var(--text-muted);
+  }
+  input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgb(74 107 49 / 25%);
   }
   input[aria-invalid='true'] {
-    border-color: #c62828;
+    border-color: var(--danger);
   }
   .error {
     margin: 0.5rem 0 0;
     font-size: 0.9rem;
     font-weight: 600;
-    color: #c62828;
+    color: var(--danger);
   }
   .team-name {
     font-weight: 700;
@@ -432,8 +451,8 @@
     gap: 0.5rem;
     margin: 0 0 0.75rem;
     padding: 0.75rem;
-    border: 2px solid #ddd;
-    border-radius: 0.5rem;
+    border: 2px solid var(--line);
+    border-radius: 0.625rem;
   }
   .members {
     list-style: none;
@@ -443,21 +462,21 @@
     padding: 0;
   }
   .icon-button {
-    min-width: 2.5rem;
-    padding: 0.55rem 0;
-    font: inherit;
-    border: 2px solid #bbb;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    border: 2px solid var(--border);
     border-radius: 0.5rem;
-    background: #fff;
-    cursor: pointer;
+    background: var(--surface);
   }
   .add {
+    min-height: 44px;
     padding: 0.6rem;
-    font: inherit;
-    border: 2px dashed #bbb;
+    border: 2px dashed var(--border);
     border-radius: 0.5rem;
     background: none;
-    cursor: pointer;
+    color: var(--primary);
+    font-weight: 600;
   }
   .actions {
     display: grid;
@@ -467,33 +486,22 @@
   .actions.with-cancel {
     grid-template-columns: 1fr 2fr;
   }
+  .start,
+  .cancel {
+    min-height: 52px;
+  }
   .start {
-    padding: 0.9rem;
-    font: inherit;
     font-size: 1.1rem;
     font-weight: 700;
-    color: #fff;
-    border: none;
-    border-radius: 0.5rem;
-    background: #2e7d32;
-    cursor: pointer;
   }
-  .cancel {
-    padding: 0.9rem;
-    font: inherit;
-    border: 2px solid #bbb;
-    border-radius: 0.5rem;
-    background: #fff;
-    cursor: pointer;
-  }
-  button:disabled {
-    opacity: 0.4;
-    cursor: default;
+  .icon-button:disabled,
+  .add:disabled {
+    opacity: 0.45;
   }
   .note {
     margin: 0;
     font-size: 0.9rem;
-    color: #666;
+    color: var(--text-muted);
   }
   .visually-hidden {
     position: absolute;

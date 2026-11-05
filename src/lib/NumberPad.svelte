@@ -40,6 +40,7 @@
               type="button"
               class="pin"
               class:on={selected.includes(pin)}
+              aria-pressed={selected.includes(pin)}
               disabled={finished}
               onclick={() => toggle(pin)}
             >
@@ -51,10 +52,10 @@
     </div>
 
     <div class="actions">
-      <button type="button" class="miss" disabled={finished} onclick={miss}>Miss</button>
+      <button type="button" class="btn miss" disabled={finished} onclick={miss}>Miss</button>
       <button
         type="button"
-        class="confirm"
+        class="btn btn-primary"
         disabled={finished || selected.length === 0}
         onclick={confirm}
       >
@@ -88,35 +89,47 @@
     width: var(--pin);
     height: var(--pin);
     padding: 0;
-    border-radius: 50%;
-  }
-  button {
-    padding: 1rem 0;
     font-size: 1.25rem;
-    border: 2px solid #bbb;
-    border-radius: 0.5rem;
-    background: #fff;
+    font-weight: 600;
+    border: 2px solid var(--border);
+    border-radius: 50%;
+    background: var(--surface);
+    color: var(--text);
+    transition:
+      background-color 120ms ease,
+      border-color 120ms ease,
+      color 120ms ease,
+      transform 80ms ease;
   }
-  button.on {
-    background: #2e7d32;
-    border-color: #2e7d32;
-    color: #fff;
+  .pin:active:not(:disabled) {
+    transform: scale(0.94);
   }
-  button:disabled {
-    opacity: 0.4;
+  @media (prefers-reduced-motion: reduce) {
+    .pin {
+      transition: none;
+    }
+    .pin:active:not(:disabled) {
+      transform: none;
+    }
+  }
+  .pin.on {
+    border-color: var(--primary);
+    background: var(--primary);
+    color: var(--on-primary);
+  }
+  .pin:disabled {
+    opacity: 0.45;
   }
   .actions {
     display: grid;
     grid-template-columns: 1fr 2fr;
     gap: 0.5rem;
   }
-  .miss {
-    border-color: #c62828;
-    color: #c62828;
+  .actions .btn {
+    font-size: 1.125rem;
   }
-  .confirm {
-    background: #2e7d32;
-    border-color: #2e7d32;
-    color: #fff;
+  .miss {
+    border-color: var(--danger);
+    color: var(--danger);
   }
 </style>

@@ -35,6 +35,6 @@
   .game {
     display: flex;
     flex-direction: column;
-    align-items: center;
+    width: min(100%, 32rem);
   }
 </style>

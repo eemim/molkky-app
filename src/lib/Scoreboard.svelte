@@ -59,10 +59,10 @@
     gap: 0.5rem;
   }
   li {
-    padding: 0.75rem 1rem;
-    border: 2px solid transparent;
-    border-radius: 0.5rem;
-    background: #f3f3f3;
+    padding: 0.25rem 1rem;
+    border: 2px solid var(--line);
+    border-radius: 0.625rem;
+    background: var(--surface);
   }
   .row {
     display: grid;
@@ -75,17 +75,17 @@
     justify-items: start;
   }
   .name {
+    min-height: 44px;
+    padding: 0.5rem 0;
     text-align: left;
-    font: inherit;
-    padding: 0;
     border: none;
     background: none;
-    cursor: pointer;
   }
   .thrower {
+    margin: -0.25rem 0 0.5rem;
     font-size: 0.85rem;
     font-weight: 600;
-    color: #2e7d32;
+    color: var(--primary);
   }
   .score {
     font-size: 1.5rem;
@@ -94,17 +94,17 @@
     text-align: right;
   }
   .misses {
-    color: #c62828;
+    color: var(--danger);
   }
   .current {
-    border-color: #2e7d32;
+    border-color: var(--primary);
   }
   .eliminated .row {
-    opacity: 0.4;
+    color: var(--text-muted);
     text-decoration: line-through;
   }
   .finished {
-    background: #c8e6c9;
-    border-color: #2e7d32;
+    border-color: var(--primary);
+    background: var(--success-bg);
   }
 </style>
