@@ -40,6 +40,7 @@
               type="button"
               class="pin"
               class:on={selected.includes(pin)}
+              aria-pressed={selected.includes(pin)}
               disabled={finished}
               onclick={() => toggle(pin)}
             >
@@ -89,6 +90,22 @@
     height: var(--pin);
     padding: 0;
     border-radius: 50%;
+    transition:
+      background-color 120ms ease,
+      border-color 120ms ease,
+      color 120ms ease,
+      transform 80ms ease;
+  }
+  .pin:active:not(:disabled) {
+    transform: scale(0.94);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pin {
+      transition: none;
+    }
+    .pin:active:not(:disabled) {
+      transform: none;
+    }
   }
   button {
     padding: 1rem 0;
