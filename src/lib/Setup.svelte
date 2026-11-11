@@ -61,7 +61,16 @@
   // which is a plain index (not input focus), because tapping a chip takes focus away.
   let activeTeam = $state(0);
   let managingNames = $state(false);
+  let showAllNames = $state(false);
 
+  // The newest names are always visible; the rest wait behind "Show more"
+  const VISIBLE_NAMES = 5;
+  let visibleNames = $derived(
+    managingNames || showAllNames ? savedNames.list : savedNames.list.slice(0, VISIBLE_NAMES),
+  );
+  let hiddenCount = $derived(savedNames.list.length - VISIBLE_NAMES);
+
+  // A chip is selected while its exact name is in the form
   let usedNames = $derived(new Set(mode === 'individuals' ? individualNames : teamMembers.flat()));
   let namesFull = $derived(savedNames.list.length >= MAX_SAVED_NAMES);
   let activeTeamLabel = $derived(teamNames[activeTeam] || `Team ${activeTeam + 1}`);
@@ -73,6 +82,29 @@
   );
 
   const isSaved = (name: string) => savedNames.list.includes(name.trim());
+
+  // Chips toggle: a selected name is taken out of the form, otherwise it is added
+  function toggleName(name: string) {
+    if (usedNames.has(name)) unpickName(name);
+    else pickName(name);
+  }
+
+  // Removes the last field holding exactly `name`, in any team (not just the active one)
+  function unpickName(name: string) {
+    if (mode === 'individuals') {
+      const index = players.findLastIndex((player) => player.trim() === name);
+      if (index >= 0) removePlayer(index);
+      return;
+    }
+
+    for (let t = teams.length - 1; t >= 0; t--) {
+      const m = teams[t].members.findLastIndex((member) => member.trim() === name);
+      if (m >= 0) {
+        removeMember(t, m);
+        return;
+      }
+    }
+  }
 
   function pickName(name: string) {
     if (mode === 'individuals') {
@@ -113,12 +145,20 @@
     else start(teamNames, teamMembers);
   }
 
+  // Removing below the minimum is allowed: an empty field takes the removed one's place
+  const MIN_PLAYERS = 2;
+  const MIN_TEAMS = 2;
+  const emptyTeam = (): Team => ({ name: '', members: [''] });
+  const isBlank = (name: string) => name.trim() === '';
+  const isEmptyTeam = (team: Team) => isBlank(team.name) && team.members.every(isBlank);
+
   function addPlayer() {
     players.push('');
   }
 
   function removePlayer(index: number) {
     players.splice(index, 1);
+    while (players.length < MIN_PLAYERS) players.push('');
   }
 
   function movePlayer(index: number, step: number) {
@@ -127,7 +167,7 @@
 
   // A new team becomes the active one, since it is the one you are about to fill
   function addTeam() {
-    teams.push({ name: '', members: [''] });
+    teams.push(emptyTeam());
     activeTeam = teams.length - 1;
   }
 
@@ -135,6 +175,7 @@
   function removeTeam(index: number) {
     teams.splice(index, 1);
     if (index < activeTeam) activeTeam -= 1;
+    while (teams.length < MIN_TEAMS) teams.push(emptyTeam());
     activeTeam = Math.min(activeTeam, teams.length - 1);
   }
 
@@ -153,7 +194,9 @@
   }
 
   function removeMember(teamIndex: number, memberIndex: number) {
-    teams[teamIndex].members.splice(memberIndex, 1);
+    const members = teams[teamIndex].members;
+    members.splice(memberIndex, 1);
+    if (members.length === 0) members.push('');
   }
 
   function moveMember(teamIndex: number, memberIndex: number, step: number) {
@@ -182,7 +225,7 @@
 
 {#snippet savedBar()}
   {#if savedNames.list.length > 0}
-    <div class="saved" class:sticky={mode === 'teams'}>
+    <div class="saved">
       <div class="saved-heading">
         <span>
           Saved players
@@ -195,7 +238,7 @@
         </button>
       </div>
       <div class="chips">
-        {#each savedNames.list as name (name)}
+        {#each visibleNames as name (name)}
           {#if managingNames}
             <button
               type="button"
@@ -206,17 +249,29 @@
               {name} <span aria-hidden="true">✕</span>
             </button>
           {:else}
+            {@const selected = usedNames.has(name)}
             <button
               type="button"
               class="chip"
-              class:used={usedNames.has(name)}
-              disabled={activeTeamFull}
-              onclick={() => pickName(name)}
+              class:selected
+              aria-pressed={selected}
+              disabled={activeTeamFull && !selected}
+              onclick={() => toggleName(name)}
             >
               {name}
             </button>
           {/if}
         {/each}
+        {#if hiddenCount > 0 && !managingNames}
+          <button
+            type="button"
+            class="more"
+            aria-expanded={showAllNames}
+            onclick={() => (showAllNames = !showAllNames)}
+          >
+            {showAllNames ? 'Show less' : `Show ${hiddenCount} more`}
+          </button>
+        {/if}
       </div>
       {#if activeTeamFull && !managingNames}
         <p class="note">{activeTeamLabel} is full.</p>
@@ -315,7 +370,7 @@
                 type="button"
                 class="icon-button"
                 onclick={() => removePlayer(index)}
-                disabled={players.length <= 2}
+                disabled={players.length <= MIN_PLAYERS && isBlank(player)}
                 aria-label={`Remove ${player.trim() || `player ${index + 1}`}`}
               >
                 ✕
@@ -384,7 +439,7 @@
                 type="button"
                 class="icon-button"
                 onclick={() => removeTeam(teamIndex)}
-                disabled={teams.length <= 2}
+                disabled={teams.length <= MIN_TEAMS && isEmptyTeam(team)}
                 aria-label={`Remove ${team.name.trim() || `team ${teamIndex + 1}`}`}
               >
                 ✕
@@ -428,7 +483,7 @@
                     type="button"
                     class="icon-button"
                     onclick={() => removeMember(teamIndex, memberIndex)}
-                    disabled={team.members.length <= 1}
+                    disabled={team.members.length <= 1 && isBlank(member)}
                     aria-label={`Remove ${member.trim() || `member ${memberIndex + 1}`}`}
                   >
                     ✕
@@ -615,8 +670,7 @@
     border: 1px solid var(--line);
     border-radius: 0.625rem;
     background: var(--surface);
-  }
-  .saved.sticky {
+    /* Stays in reach while scrolling a long list, in both modes */
     position: sticky;
     top: 0.5rem;
     z-index: 1;
@@ -663,9 +717,19 @@
   .chip:active:not(:disabled) {
     transform: scale(0.95);
   }
-  .chip.used {
-    background: var(--surface-muted);
-    color: var(--text-muted);
+  .chip.selected {
+    border-color: var(--primary);
+    background: var(--primary);
+    color: var(--on-primary);
+  }
+  .more {
+    min-height: 44px;
+    padding: 0 0.5rem;
+    border: none;
+    background: none;
+    color: var(--primary);
+    font-weight: 600;
+    text-decoration: underline;
   }
   .chip.removing {
     border-color: var(--danger);
