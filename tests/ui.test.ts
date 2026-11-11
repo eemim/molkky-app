@@ -4,12 +4,15 @@ import Controls from '../src/lib/Controls.svelte';
 import Results from '../src/lib/Results.svelte';
 import Setup from '../src/lib/Setup.svelte';
 import { reset, start, view, throwPins, showResults } from '../src/lib/gameStore.svelte';
+import { loadSavedNames, saveName, savedNames } from '../src/lib/namesStore.svelte';
+import { MAX_SAVED_NAMES } from '../src/lib/names';
 
 let component: ReturnType<typeof mount> | undefined;
 
 beforeEach(() => {
   localStorage.clear();
   reset();
+  loadSavedNames();
 });
 afterEach(() => {
   if (component) unmount(component);
@@ -142,5 +145,250 @@ describe('Setup names', () => {
     flushSync();
     expect(document.querySelector('[role="alert"]')).toBeNull();
     expect(inputs().map((i) => i.placeholder)).toEqual(['Team', 'Player', 'Team', 'Player']);
+  });
+});
+
+describe('Saved players', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    loadSavedNames();
+  });
+
+  const type = (input: HTMLInputElement, value: string) => {
+    input.value = value;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    flushSync();
+  };
+  const stars = () => [...document.querySelectorAll<HTMLButtonElement>('.star')];
+  const chip = (name: string) =>
+    [...document.querySelectorAll<HTMLButtonElement>('.chip')].find(
+      (b) => b.textContent?.trim() === name,
+    )!;
+  const tap = (el: HTMLElement) => {
+    el.click();
+    flushSync();
+  };
+  const teamBoxes = () => [...document.querySelectorAll<HTMLFieldSetElement>('fieldset.team')];
+  const memberValues = (team: number) =>
+    [...teamBoxes()[team].querySelectorAll<HTMLInputElement>('.members input')].map((i) => i.value);
+
+  it('shows no saved list until a name is starred, then offers it as a chip', () => {
+    render(Setup);
+    expect(document.querySelector('.saved')).toBeNull();
+    expect(stars()[0].disabled).toBe(true);
+
+    type(inputs()[0], 'John');
+    tap(stars()[0]);
+    expect(savedNames.list).toEqual(['John']);
+    expect(stars()[0].getAttribute('aria-pressed')).toBe('true');
+    expect(chip('John')).toBeTruthy();
+
+    tap(stars()[0]);
+    expect(savedNames.list).toEqual([]);
+    expect(document.querySelector('.saved')).toBeNull();
+  });
+
+  it('fills the first empty field, then adds a new row', () => {
+    for (const name of ['Max', 'Jane', 'John']) saveName(name);
+    render(Setup);
+
+    tap(chip('John'));
+    tap(chip('Jane'));
+    tap(chip('Max'));
+    expect(inputs().map((i) => i.value)).toEqual(['John', 'Jane', 'Max']);
+  });
+
+  it('selects a chip while its name is in the form, and tapping again takes it out', () => {
+    for (const name of ['Max', 'Jane', 'John']) saveName(name);
+    render(Setup);
+    expect(chip('John').getAttribute('aria-pressed')).toBe('false');
+
+    tap(chip('John'));
+    tap(chip('Jane'));
+    tap(chip('Max'));
+    expect(chip('John').getAttribute('aria-pressed')).toBe('true');
+
+    tap(chip('Jane'));
+    expect(inputs().map((i) => i.value)).toEqual(['John', 'Max']);
+    expect(chip('Jane').getAttribute('aria-pressed')).toBe('false');
+
+    // Below the minimum, an empty field takes the place of the removed name
+    tap(chip('John'));
+    expect(inputs().map((i) => i.value)).toEqual(['Max', '']);
+  });
+
+  it('also selects a chip for a name typed by hand', () => {
+    saveName('John');
+    render(Setup);
+    type(inputs()[1], 'John');
+    expect(chip('John').getAttribute('aria-pressed')).toBe('true');
+
+    tap(chip('John'));
+    expect(inputs().map((i) => i.value)).toEqual(['', '']);
+  });
+
+  it('takes a name out of whichever team has it, not only the active team', () => {
+    for (const name of ['Jane', 'John']) saveName(name);
+    render(Setup);
+    tap(button('Teams'));
+    tap(chip('John'));
+
+    teamBoxes()[1].dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    flushSync();
+    tap(chip('Jane'));
+    tap(chip('John'));
+
+    expect(memberValues(0)).toEqual(['']);
+    expect(memberValues(1)).toEqual(['Jane']);
+  });
+
+  it('shows the 5 newest names, and the rest behind Show more', () => {
+    for (let i = 7; i >= 1; i--) saveName(`Player ${i}`);
+    render(Setup);
+    const chipNames = () =>
+      [...document.querySelectorAll('.chip')].map((c) => c.textContent?.trim());
+
+    expect(chipNames()).toEqual(['Player 1', 'Player 2', 'Player 3', 'Player 4', 'Player 5']);
+    tap(button('Show 2 more'));
+    expect(chipNames()).toHaveLength(7);
+    tap(button('Show less'));
+    expect(chipNames()).toHaveLength(5);
+
+    // Edit mode always lists everything
+    tap(button('Edit'));
+    expect(chipNames()).toHaveLength(7);
+    expect(button('Show 2 more')).toBeUndefined();
+  });
+
+  it('removes names in Edit mode and leaves Edit mode when the list is empty', () => {
+    saveName('Jane');
+    saveName('John');
+    render(Setup);
+
+    tap(button('Edit'));
+    tap(
+      document.querySelector<HTMLButtonElement>('[aria-label="Remove John from saved players"]')!,
+    );
+    expect(savedNames.list).toEqual(['Jane']);
+    expect(inputs().map((i) => i.value)).toEqual(['', '']);
+
+    tap(
+      document.querySelector<HTMLButtonElement>('[aria-label="Remove Jane from saved players"]')!,
+    );
+    expect(document.querySelector('.saved')).toBeNull();
+
+    saveName('Max');
+    flushSync();
+    expect(button('Edit')).toBeTruthy();
+  });
+
+  it('adds chips to the active team, so teams can be split as you like', () => {
+    for (const name of ['Max', 'Jane', 'John', 'Ada']) saveName(name);
+    render(Setup);
+    tap(button('Teams'));
+
+    expect(teamBoxes()[0].classList.contains('active')).toBe(true);
+    tap(chip('Ada'));
+    tap(chip('John'));
+
+    teamBoxes()[1].dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    flushSync();
+    expect(teamBoxes()[1].classList.contains('active')).toBe(true);
+    expect(document.querySelector('.target')?.textContent).toMatch(/Team 2/);
+    tap(chip('Jane'));
+    tap(chip('Max'));
+
+    expect(memberValues(0)).toEqual(['Ada', 'John']);
+    expect(memberValues(1)).toEqual(['Jane', 'Max']);
+  });
+
+  it('keeps the same team active when the teams are reordered or removed', () => {
+    render(Setup);
+    tap(button('Teams'));
+    type(inputs()[2], 'Blue');
+    teamBoxes()[1].dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    flushSync();
+
+    tap(document.querySelector<HTMLButtonElement>('[aria-label="Move Blue up"]')!);
+    expect(teamBoxes()[0].classList.contains('active')).toBe(true);
+
+    tap(button('+ Add team'));
+    expect(teamBoxes()[2].classList.contains('active')).toBe(true);
+    tap(document.querySelector<HTMLButtonElement>('[aria-label="Remove team 3"]')!);
+    expect(teamBoxes()[1].classList.contains('active')).toBe(true);
+  });
+
+  it('disables unselected chips when the active team is full', () => {
+    const names = ['John', 'Jane', 'Max', 'Ada', 'Lin', 'Bob', 'Eve', 'Ida'];
+    for (const name of [...names].reverse()) saveName(name);
+    render(Setup);
+    tap(button('Teams'));
+    tap(button('Show 3 more'));
+    for (const name of names.slice(0, 7)) tap(chip(name));
+
+    expect(memberValues(0)).toHaveLength(7);
+    expect(chip('Ida').disabled).toBe(true);
+    expect(chip('John').disabled).toBe(false);
+    expect(document.body.textContent).toMatch(/Team 1 is full/);
+  });
+
+  it('stops saving at the cap and says how to make room', () => {
+    for (let i = 0; i < MAX_SAVED_NAMES; i++) saveName(`Player ${i + 1}`);
+    render(Setup);
+    type(inputs()[0], 'John');
+
+    expect(stars()[0].disabled).toBe(true);
+    expect(document.body.textContent).toMatch(/Remove a name to save more/);
+  });
+
+  it('moves the players of a started game to the front of the list', async () => {
+    for (const name of ['John', 'Jane', 'Max']) saveName(name);
+    render(Setup);
+    tap(chip('John'));
+    tap(chip('Jane'));
+    button('Start game').click();
+    await tick();
+
+    expect(view.state?.players.map((p) => p.name)).toEqual(['John', 'Jane']);
+    expect(savedNames.list).toEqual(['John', 'Jane', 'Max']);
+  });
+});
+
+describe('Removing below the minimum', () => {
+  const removeButtons = () => [
+    ...document.querySelectorAll<HTMLButtonElement>('.icon-button[aria-label^="Remove"]'),
+  ];
+  const type = (input: HTMLInputElement, value: string) => {
+    input.value = value;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    flushSync();
+  };
+
+  it('replaces a removed player with an empty field when only two are left', () => {
+    render(Setup);
+    expect(removeButtons().every((b) => b.disabled)).toBe(true);
+
+    type(inputs()[0], 'John');
+    type(inputs()[1], 'Jane');
+    document.querySelector<HTMLButtonElement>('[aria-label="Remove John"]')!.click();
+    flushSync();
+    expect(inputs().map((i) => i.value)).toEqual(['Jane', '']);
+  });
+
+  it('replaces a removed team with an empty one, and the last member with an empty field', () => {
+    render(Setup);
+    button('Teams').click();
+    flushSync();
+    type(inputs()[0], 'Blue');
+    type(inputs()[1], 'John');
+    type(inputs()[2], 'Red');
+
+    document.querySelector<HTMLButtonElement>('[aria-label="Remove John"]')!.click();
+    flushSync();
+    expect(inputs().map((i) => i.value)).toEqual(['Blue', '', 'Red', '']);
+
+    document.querySelector<HTMLButtonElement>('[aria-label="Remove Blue"]')!.click();
+    flushSync();
+    expect(inputs().map((i) => i.value)).toEqual(['Red', '', '', '']);
   });
 });
