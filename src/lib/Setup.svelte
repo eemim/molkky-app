@@ -3,6 +3,8 @@
   import { start, view, cancelEditTeams } from './gameStore.svelte';
   import { MAX_TEAM_SIZE, validRoster } from './molkky';
   import { moveItem } from './list';
+  import { MAX_SAVED_NAMES, canSave } from './names';
+  import { savedNames, forgetName, markPlayed, toggleSavedName } from './namesStore.svelte';
 
   type Mode = 'individuals' | 'teams';
   type Team = { name: string; members: string[] };
@@ -55,6 +57,43 @@
       : 'Every team and every member needs a name. Fill in the highlighted fields.',
   );
 
+  // Saved names: tapping a chip fills a name field. In team mode it goes to the active team,
+  // which is a plain index (not input focus), because tapping a chip takes focus away.
+  let activeTeam = $state(0);
+  let managingNames = $state(false);
+
+  let usedNames = $derived(new Set(mode === 'individuals' ? individualNames : teamMembers.flat()));
+  let namesFull = $derived(savedNames.list.length >= MAX_SAVED_NAMES);
+  let activeTeamLabel = $derived(teamNames[activeTeam] || `Team ${activeTeam + 1}`);
+  let activeTeamFull = $derived(
+    mode === 'teams' &&
+      teams[activeTeam] !== undefined &&
+      teams[activeTeam].members.length >= MAX_TEAM_SIZE &&
+      teams[activeTeam].members.every((name) => name.trim() !== ''),
+  );
+
+  const isSaved = (name: string) => savedNames.list.includes(name.trim());
+
+  function pickName(name: string) {
+    if (mode === 'individuals') {
+      const empty = players.findIndex((player) => player.trim() === '');
+      if (empty >= 0) players[empty] = name;
+      else players.push(name);
+      return;
+    }
+
+    const team = teams[activeTeam];
+    if (!team) return;
+    const empty = team.members.findIndex((member) => member.trim() === '');
+    if (empty >= 0) team.members[empty] = name;
+    else if (team.members.length < MAX_TEAM_SIZE) team.members.push(name);
+  }
+
+  function removeSavedName(name: string) {
+    forgetName(name);
+    if (savedNames.list.length === 0) managingNames = false;
+  }
+
   function selectMode(next: Mode) {
     mode = next;
     submitted = false;
@@ -69,6 +108,7 @@
       return;
     }
 
+    markPlayed(mode === 'individuals' ? individualNames : teamMembers.flat());
     if (mode === 'individuals') start(individualNames);
     else start(teamNames, teamMembers);
   }
@@ -85,16 +125,25 @@
     players = moveItem(players, index, index + step);
   }
 
+  // A new team becomes the active one, since it is the one you are about to fill
   function addTeam() {
     teams.push({ name: '', members: [''] });
+    activeTeam = teams.length - 1;
   }
 
+  // The active team stays the same team when others are removed or moved
   function removeTeam(index: number) {
     teams.splice(index, 1);
+    if (index < activeTeam) activeTeam -= 1;
+    activeTeam = Math.min(activeTeam, teams.length - 1);
   }
 
   function moveTeam(index: number, step: number) {
-    teams = moveItem(teams, index, index + step);
+    const to = index + step;
+    if (to < 0 || to >= teams.length) return;
+    teams = moveItem(teams, index, to);
+    if (activeTeam === index) activeTeam = to;
+    else if (activeTeam === to) activeTeam = index;
   }
 
   function addMember(teamIndex: number) {
@@ -112,6 +161,72 @@
     team.members = moveItem(team.members, memberIndex, memberIndex + step);
   }
 </script>
+
+{#snippet star(name: string)}
+  {@const saved = isSaved(name)}
+  <button
+    type="button"
+    class="star"
+    aria-pressed={saved}
+    aria-label={name.trim() === ''
+      ? 'Save name'
+      : saved
+        ? `Remove ${name.trim()} from saved players`
+        : `Save ${name.trim()}`}
+    disabled={!saved && !canSave(savedNames.list, name)}
+    onclick={() => toggleSavedName(name)}
+  >
+    <span aria-hidden="true">{saved ? '★' : '☆'}</span>
+  </button>
+{/snippet}
+
+{#snippet savedBar()}
+  {#if savedNames.list.length > 0}
+    <div class="saved" class:sticky={mode === 'teams'}>
+      <div class="saved-heading">
+        <span>
+          Saved players
+          {#if mode === 'teams'}
+            <span class="target">· Adding to <strong>{activeTeamLabel}</strong></span>
+          {/if}
+        </span>
+        <button type="button" class="manage" onclick={() => (managingNames = !managingNames)}>
+          {managingNames ? 'Done' : 'Edit'}
+        </button>
+      </div>
+      <div class="chips">
+        {#each savedNames.list as name (name)}
+          {#if managingNames}
+            <button
+              type="button"
+              class="chip removing"
+              aria-label={`Remove ${name} from saved players`}
+              onclick={() => removeSavedName(name)}
+            >
+              {name} <span aria-hidden="true">✕</span>
+            </button>
+          {:else}
+            <button
+              type="button"
+              class="chip"
+              class:used={usedNames.has(name)}
+              disabled={activeTeamFull}
+              onclick={() => pickName(name)}
+            >
+              {name}
+            </button>
+          {/if}
+        {/each}
+      </div>
+      {#if activeTeamFull && !managingNames}
+        <p class="note">{activeTeamLabel} is full.</p>
+      {/if}
+      {#if namesFull}
+        <p class="note">{MAX_SAVED_NAMES} names saved. Remove a name to save more.</p>
+      {/if}
+    </div>
+  {/if}
+{/snippet}
 
 <section class="setup-card" aria-labelledby="setup-title">
   <div class="eyebrow">Molkky</div>
@@ -156,6 +271,8 @@
       {#if mode === 'individuals'}
         <p class="intro">Add everyone playing, then start throwing.</p>
 
+        {@render savedBar()}
+
         <div class="list-heading">
           <span>Players</span>
           <span>{players.length}</span>
@@ -165,14 +282,17 @@
           {#each players as player, index (index)}
             <div class="row player-row">
               <span class="number" aria-hidden="true">{index + 1}</span>
-              <input
-                type="text"
-                bind:value={players[index]}
-                placeholder="Player"
-                aria-label={`Player ${index + 1} name`}
-                aria-invalid={missing(player)}
-                aria-describedby={missing(player) ? errorId : undefined}
-              />
+              <div class="field">
+                <input
+                  type="text"
+                  bind:value={players[index]}
+                  placeholder="Player"
+                  aria-label={`Player ${index + 1} name`}
+                  aria-invalid={missing(player)}
+                  aria-describedby={missing(player) ? errorId : undefined}
+                />
+                {@render star(player)}
+              </div>
               <button
                 type="button"
                 class="icon-button"
@@ -214,13 +334,22 @@
           {/if}
         </p>
 
+        {@render savedBar()}
+
         <div class="list-heading">
           <span>Teams</span>
           <span>{teams.length}</span>
         </div>
 
         {#each teams as team, teamIndex (teamIndex)}
-          <fieldset class="team">
+          <!-- Tapping anywhere in a team makes it the target for saved-name chips.
+               Keyboard users get the same through focusin. -->
+          <fieldset
+            class="team"
+            class:active={teamIndex === activeTeam}
+            onfocusin={() => (activeTeam = teamIndex)}
+            onpointerdown={() => (activeTeam = teamIndex)}
+          >
             <legend class="visually-hidden">Team {teamIndex + 1}</legend>
 
             <div class="row team-row">
@@ -266,14 +395,17 @@
               {#each team.members as member, memberIndex (memberIndex)}
                 <li class="row member-row">
                   <span class="number" aria-hidden="true">{memberIndex + 1}</span>
-                  <input
-                    type="text"
-                    bind:value={team.members[memberIndex]}
-                    placeholder="Player"
-                    aria-label={`Team ${teamIndex + 1} member ${memberIndex + 1} name`}
-                    aria-invalid={missing(member)}
-                    aria-describedby={missing(member) ? errorId : undefined}
-                  />
+                  <div class="field">
+                    <input
+                      type="text"
+                      bind:value={team.members[memberIndex]}
+                      placeholder="Player"
+                      aria-label={`Team ${teamIndex + 1} member ${memberIndex + 1} name`}
+                      aria-invalid={missing(member)}
+                      aria-describedby={missing(member) ? errorId : undefined}
+                    />
+                    {@render star(member)}
+                  </div>
                   <button
                     type="button"
                     class="icon-button"
@@ -445,6 +577,110 @@
   }
   .team-name {
     font-weight: 700;
+  }
+  .team.active {
+    border-color: var(--primary);
+  }
+  .field {
+    position: relative;
+    min-width: 0;
+  }
+  .field input {
+    padding-right: 44px;
+  }
+  .star {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 44px;
+    height: 100%;
+    padding: 0;
+    border: none;
+    border-radius: 0 0.5rem 0.5rem 0;
+    background: none;
+    color: var(--text-muted);
+    font-size: 1.25rem;
+  }
+  .star[aria-pressed='true'] {
+    color: var(--primary);
+  }
+  .star:disabled {
+    opacity: 0.35;
+  }
+  .saved {
+    display: grid;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    padding: 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: 0.625rem;
+    background: var(--surface);
+  }
+  .saved.sticky {
+    position: sticky;
+    top: 0.5rem;
+    z-index: 1;
+    box-shadow: 0 4px 12px rgb(55 45 25 / 10%);
+  }
+  .saved-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    font-weight: 600;
+  }
+  .target {
+    font-weight: 400;
+    color: var(--text-muted);
+  }
+  .target strong {
+    color: var(--primary);
+  }
+  .manage {
+    min-height: 44px;
+    padding: 0 0.5rem;
+    border: none;
+    background: none;
+    color: var(--primary);
+    font-weight: 600;
+  }
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .chip {
+    min-height: 44px;
+    padding: 0 0.9rem;
+    border: 2px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    font-weight: 600;
+    transition:
+      background-color 120ms ease,
+      transform 80ms ease;
+  }
+  .chip:active:not(:disabled) {
+    transform: scale(0.95);
+  }
+  .chip.used {
+    background: var(--surface-muted);
+    color: var(--text-muted);
+  }
+  .chip.removing {
+    border-color: var(--danger);
+    color: var(--danger);
+  }
+  .chip:disabled {
+    opacity: 0.45;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .chip {
+      transition: none;
+    }
+    .chip:active:not(:disabled) {
+      transform: none;
+    }
   }
   .team {
     display: grid;
