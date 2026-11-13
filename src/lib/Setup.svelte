@@ -329,8 +329,8 @@
         {@render savedBar()}
 
         <div class="list-heading">
-          <span>Players</span>
-          <span>{players.length}</span>
+          <span>Players: {players.length}</span>
+          <span class="order-label" aria-hidden="true">Order</span>
         </div>
 
         <div class="list">
@@ -391,9 +391,9 @@
 
         {@render savedBar()}
 
-        <div class="list-heading">
-          <span>Teams</span>
-          <span>{teams.length}</span>
+        <div class="list-heading in-teams">
+          <span>Teams: {teams.length}</span>
+          <span class="order-label" aria-hidden="true">Order</span>
         </div>
 
         {#each teams as team, teamIndex (teamIndex)}
@@ -574,11 +574,23 @@
     font-weight: 700;
     box-shadow: 0 1px 3px rgb(31 43 32 / 25%);
   }
+  /* Columns line up with the rows below: label, the two order arrows, the remove button */
   .list-heading {
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: 1fr calc(88px + 0.5rem) 44px;
+    align-items: end;
+    gap: 0.5rem;
     margin-bottom: 0.5rem;
     font-weight: 600;
+  }
+  /* Team rows sit inside the team box: match its padding (0.75rem) and border (2px) */
+  .list-heading.in-teams {
+    padding-inline: calc(0.75rem + 2px);
+  }
+  .order-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-align: center;
   }
   .list {
     display: grid;
