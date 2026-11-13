@@ -222,6 +222,23 @@
     const team = teams[teamIndex];
     if (team.members.length >= MAX_TEAM_SIZE) return;
     team.members.push('');
+    activeTeam = teamIndex;
+  }
+
+  // Enter (RET on a phone keyboard) only confirms the field and closes the keyboard.
+  // Without this the browser submits the form: it would jump to a gap or start the game.
+  function confirmField(event: KeyboardEvent) {
+    if (event.key !== 'Enter' || !(event.target instanceof HTMLInputElement)) return;
+    event.preventDefault();
+    event.target.blur();
+  }
+
+  // A tap on a team box selects it. `click` (unlike `pointerdown`) does not fire when the
+  // touch turns into a scroll. Buttons inside the box do their own thing: a move or remove
+  // must not re-select the team by its old position afterwards.
+  function selectTeam(event: MouseEvent, teamIndex: number) {
+    if (event.target instanceof Element && event.target.closest('button')) return;
+    activeTeam = teamIndex;
   }
 
   function removeMember(teamIndex: number, memberIndex: number) {
@@ -400,6 +417,8 @@
                 <div class="field">
                   <input
                     type="text"
+                    enterkeyhint="done"
+                    onkeydown={confirmField}
                     bind:value={players[index]}
                     placeholder="Player"
                     aria-label={`Player ${index + 1} name`}
@@ -450,19 +469,23 @@
 
           <div class="team-list">
             {#each teams as team, teamIndex (teamIndex)}
-              <!-- Tapping anywhere in a team makes it the target for saved-name chips.
-               Keyboard users get the same through focusin. -->
+              <!-- Tapping anywhere in a team makes it the target for saved-name chips. This is a
+                   pointer shortcut: keyboard and screen reader users have the "Add to" radios,
+                   and focusing a field in the team selects it too. -->
+              <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
               <fieldset
                 class="team"
                 class:active={teamIndex === activeTeam}
                 onfocusin={() => (activeTeam = teamIndex)}
-                onpointerdown={() => (activeTeam = teamIndex)}
+                onclick={(event) => selectTeam(event, teamIndex)}
               >
                 <legend class="visually-hidden">Team {teamIndex + 1}</legend>
 
                 <div class="row team-row">
                   <input
                     type="text"
+                    enterkeyhint="done"
+                    onkeydown={confirmField}
                     class="team-name"
                     bind:value={team.name}
                     placeholder="Team"
@@ -506,6 +529,8 @@
                       <div class="field">
                         <input
                           type="text"
+                          enterkeyhint="done"
+                          onkeydown={confirmField}
                           bind:value={team.members[memberIndex]}
                           placeholder="Player"
                           aria-label={`Team ${teamIndex + 1} member ${memberIndex + 1} name`}
