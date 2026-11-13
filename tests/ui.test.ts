@@ -318,6 +318,19 @@ describe('Saved players', () => {
     expect(teamBoxes()[1].classList.contains('active')).toBe(true);
   });
 
+  it('only keeps the saved card sticky while it is compact', () => {
+    for (let i = 7; i >= 1; i--) saveName(`Player ${i}`);
+    render(Setup);
+    const card = () => document.querySelector('.saved')!;
+
+    expect(card().classList.contains('sticky')).toBe(true);
+    tap(button('Show 2 more'));
+    expect(card().classList.contains('sticky')).toBe(false);
+    tap(button('Show less'));
+    tap(button('Edit'));
+    expect(card().classList.contains('sticky')).toBe(false);
+  });
+
   it('disables unselected chips when the active team is full', () => {
     const names = ['John', 'Jane', 'Max', 'Ada', 'Lin', 'Bob', 'Eve', 'Ida'];
     for (const name of [...names].reverse()) saveName(name);

@@ -12,6 +12,19 @@
   --success-bg: #dcebcf;
   --danger: #b3261e;
 
+  /* Spacing scale (4/8px): --space-2 inside a group, --space-6 between groups */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* Corner radius: controls (buttons, inputs), cards and boxes, page-level card */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+
   font-family:
     Inter,
     ui-sans-serif,
@@ -78,11 +91,11 @@ h1 {
 /* Shared action button: Miss/Score, game controls, results actions, dialog actions. */
 .btn {
   min-height: 48px;
-  padding: 0.75rem;
+  padding: var(--space-3);
   font-weight: 600;
   line-height: 1.2;
   border: 2px solid var(--border);
-  border-radius: 0.625rem;
+  border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--text);
   transition:
