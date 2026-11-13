@@ -784,11 +784,26 @@
   .add {
     min-height: 44px;
     padding: 0.6rem;
-    border: 2px dashed var(--border);
+    border: 2px solid var(--primary);
     border-radius: 0.5rem;
-    background: none;
+    background: var(--surface);
     color: var(--primary);
     font-weight: 600;
+    transition:
+      background-color 120ms ease,
+      transform 80ms ease;
+  }
+  .add:active:not(:disabled) {
+    background: var(--success-bg);
+    transform: scale(0.98);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .add {
+      transition: none;
+    }
+    .add:active:not(:disabled) {
+      transform: none;
+    }
   }
   .actions {
     display: grid;
