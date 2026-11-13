@@ -294,12 +294,34 @@ describe('Saved players', () => {
     teamBoxes()[1].dispatchEvent(new Event('pointerdown', { bubbles: true }));
     flushSync();
     expect(teamBoxes()[1].classList.contains('active')).toBe(true);
-    expect(document.querySelector('.target')?.textContent).toMatch(/Team 2/);
+    expect(document.querySelector('.pill.on')?.textContent).toMatch(/Team 2/);
     tap(chip('Jane'));
     tap(chip('Max'));
 
     expect(memberValues(0)).toEqual(['Ada', 'John']);
     expect(memberValues(1)).toEqual(['Jane', 'Max']);
+  });
+
+  it('picks the target team from the pills in the saved card', () => {
+    for (const name of ['Jane', 'John']) saveName(name);
+    render(Setup);
+    tap(button('Teams'));
+    type(inputs()[2], 'Red');
+
+    const radios = () => [...document.querySelectorAll<HTMLInputElement>('.picker input')];
+    expect(radios().map((r) => r.checked)).toEqual([true, false]);
+    expect(document.querySelector('.picker')?.textContent).toMatch(/Team 1.*Red/s);
+
+    tap(radios()[1]);
+    expect(radios().map((r) => r.checked)).toEqual([false, true]);
+    expect(teamBoxes()[1].classList.contains('active')).toBe(true);
+
+    tap(chip('John'));
+    expect(memberValues(1)).toEqual(['John']);
+
+    // Edit mode is for removing saved names, so the team picker steps aside
+    tap(button('Edit'));
+    expect(document.querySelector('.picker')).toBeNull();
   });
 
   it('keeps the same team active when the teams are reordered or removed', () => {

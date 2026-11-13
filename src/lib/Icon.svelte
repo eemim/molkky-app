@@ -4,6 +4,7 @@
   // All other copyright (c) for Lucide are held by Lucide Contributors 2022.
   const paths = {
     'chevron-up': ['m18 15-6-6-6 6'],
+    check: ['M20 6 9 17l-5-5'],
     'chevron-down': ['m6 9 6 6 6-6'],
     trash: [
       'M3 6h18',

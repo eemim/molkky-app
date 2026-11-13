@@ -152,6 +152,7 @@
         : 'Name the teams, then add their members in throwing order.',
   );
   const introId = `${errorId}-intro`;
+  const pickerId = `${errorId}-picker`;
 
   function selectMode(next: Mode) {
     mode = next;
@@ -257,16 +258,33 @@
   {#if savedNames.list.length > 0}
     <div class="saved" class:sticky={savedSticky} bind:offsetHeight={savedHeight}>
       <div class="saved-heading">
-        <span>
-          Saved players
-          {#if mode === 'teams'}
-            <span class="target">· Adding to <strong>{activeTeamLabel}</strong></span>
-          {/if}
-        </span>
+        <span>Saved players</span>
         <button type="button" class="manage" onclick={() => (managingNames = !managingNames)}>
           {managingNames ? 'Done' : 'Edit'}
         </button>
       </div>
+      {#if mode === 'teams' && !managingNames}
+        <!-- Which team the chips add to. Native radios give arrow keys and announcements for free;
+             the labels are the 44px pills. Tapping a team box still selects it too. -->
+        <div class="picker" role="radiogroup" aria-labelledby={`${pickerId}-label`}>
+          <span class="picker-label" id={`${pickerId}-label`}>Add to:</span>
+          {#each teams as team, teamIndex (teamIndex)}
+            <label class="pill" class:on={teamIndex === activeTeam}>
+              <input
+                type="radio"
+                class="visually-hidden"
+                name={pickerId}
+                checked={teamIndex === activeTeam}
+                onchange={() => (activeTeam = teamIndex)}
+              />
+              {#if teamIndex === activeTeam}
+                <Icon name="check" size={16} />
+              {/if}
+              <span class="pill-text">{team.name.trim() || `Team ${teamIndex + 1}`}</span>
+            </label>
+          {/each}
+        </div>
+      {/if}
       <div class="chips">
         {#each visibleNames as name (name)}
           {#if managingNames}
@@ -746,12 +764,50 @@
     gap: var(--space-2);
     font-weight: 600;
   }
-  .target {
-    font-weight: 400;
+  .picker {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .picker-label {
     color: var(--text-muted);
   }
-  .target strong {
+  /* Distinct from the name chips: a selected chip is solid green, the selected team is tinted */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    max-width: 12rem;
+    min-height: 44px;
+    padding: 0 var(--space-3);
+    border: 2px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+      background-color 120ms ease,
+      border-color 120ms ease;
+  }
+  .pill.on {
+    border-color: var(--primary);
+    background: var(--success-bg);
     color: var(--primary);
+  }
+  .pill:has(input:focus-visible) {
+    outline: 3px solid var(--primary);
+    outline-offset: 2px;
+  }
+  .pill-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pill {
+      transition: none;
+    }
   }
   .manage {
     min-height: 44px;
