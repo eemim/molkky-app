@@ -3,6 +3,7 @@
   import { start, view, cancelEditTeams } from './gameStore.svelte';
   import { MAX_TEAM_SIZE, validRoster } from './molkky';
   import { moveItem } from './list';
+  import Icon from './Icon.svelte';
   import { MAX_SAVED_NAMES, canSave } from './names';
   import { savedNames, forgetName, markPlayed, toggleSavedName } from './namesStore.svelte';
 
@@ -248,7 +249,7 @@
     disabled={!saved && !canSave(savedNames.list, name)}
     onclick={() => toggleSavedName(name)}
   >
-    <span aria-hidden="true">{saved ? '★' : '☆'}</span>
+    <Icon name="star" filled={saved} />
   </button>
 {/snippet}
 
@@ -396,7 +397,7 @@
                   disabled={index === 0}
                   aria-label={`Move ${player.trim() || `player ${index + 1}`} up`}
                 >
-                  ↑
+                  <Icon name="chevron-up" />
                 </button>
                 <button
                   type="button"
@@ -405,7 +406,7 @@
                   disabled={index === players.length - 1}
                   aria-label={`Move ${player.trim() || `player ${index + 1}`} down`}
                 >
-                  ↓
+                  <Icon name="chevron-down" />
                 </button>
                 <button
                   type="button"
@@ -414,7 +415,7 @@
                   disabled={players.length <= MIN_PLAYERS && isBlank(player)}
                   aria-label={`Remove ${player.trim() || `player ${index + 1}`}`}
                 >
-                  ✕
+                  <Icon name="trash" />
                 </button>
               </div>
             {/each}
@@ -458,7 +459,7 @@
                     disabled={teamIndex === 0}
                     aria-label={`Move ${team.name.trim() || `team ${teamIndex + 1}`} up`}
                   >
-                    ↑
+                    <Icon name="chevron-up" />
                   </button>
                   <button
                     type="button"
@@ -467,7 +468,7 @@
                     disabled={teamIndex === teams.length - 1}
                     aria-label={`Move ${team.name.trim() || `team ${teamIndex + 1}`} down`}
                   >
-                    ↓
+                    <Icon name="chevron-down" />
                   </button>
                   <button
                     type="button"
@@ -476,7 +477,7 @@
                     disabled={teams.length <= MIN_TEAMS && isEmptyTeam(team)}
                     aria-label={`Remove ${team.name.trim() || `team ${teamIndex + 1}`}`}
                   >
-                    ✕
+                    <Icon name="trash" />
                   </button>
                 </div>
 
@@ -502,7 +503,7 @@
                         disabled={memberIndex === 0}
                         aria-label={`Move ${member.trim() || `member ${memberIndex + 1}`} up`}
                       >
-                        ↑
+                        <Icon name="chevron-up" />
                       </button>
                       <button
                         type="button"
@@ -511,7 +512,7 @@
                         disabled={memberIndex === team.members.length - 1}
                         aria-label={`Move ${member.trim() || `member ${memberIndex + 1}`} down`}
                       >
-                        ↓
+                        <Icon name="chevron-down" />
                       </button>
                       <button
                         type="button"
@@ -520,7 +521,7 @@
                         disabled={team.members.length <= 1 && isBlank(member)}
                         aria-label={`Remove ${member.trim() || `member ${memberIndex + 1}`}`}
                       >
-                        ✕
+                        <Icon name="trash" />
                       </button>
                     </li>
                   {/each}
@@ -707,6 +708,8 @@
     position: absolute;
     top: 0;
     right: 0;
+    display: grid;
+    place-items: center;
     width: 44px;
     height: 100%;
     padding: 0;
@@ -714,7 +717,6 @@
     border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
     background: none;
     color: var(--text-muted);
-    font-size: 1.25rem;
   }
   .star[aria-pressed='true'] {
     color: var(--primary);
@@ -822,13 +824,28 @@
     margin: 0;
     padding: 0;
   }
+  /* Borderless icon buttons: the icon is 20px, the tap area stays 44px. A round highlight
+     shows the press, so the row stays calm without boxes. */
   .icon-button {
+    display: grid;
+    place-items: center;
     min-width: 44px;
     min-height: 44px;
     padding: 0;
-    border: 2px solid var(--border);
-    border-radius: var(--radius-sm);
-    background: var(--surface);
+    border: none;
+    border-radius: 50%;
+    background: none;
+    color: var(--text-muted);
+    transition: background-color 120ms ease;
+  }
+  .icon-button:active:not(:disabled) {
+    background: var(--surface-muted);
+    color: var(--text);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .icon-button {
+      transition: none;
+    }
   }
   .add {
     min-height: 44px;
