@@ -3,6 +3,7 @@
   import { start, view, cancelEditTeams } from './gameStore.svelte';
   import { MAX_TEAM_SIZE, validRoster } from './molkky';
   import { moveItem } from './list';
+  import Icon from './Icon.svelte';
   import { MAX_SAVED_NAMES, canSave } from './names';
   import { savedNames, forgetName, markPlayed, toggleSavedName } from './namesStore.svelte';
 
@@ -70,6 +71,22 @@
   );
   let hiddenCount = $derived(savedNames.list.length - VISIBLE_NAMES);
 
+  // The saved card only sticks while it is compact; expanded or in Edit mode it could cover
+  // most of a phone screen. While it sticks, the page reserves its height as scroll padding,
+  // so a focused field is never scrolled in behind it.
+  let savedSticky = $derived(savedNames.list.length > 0 && !showAllNames && !managingNames);
+  let savedHeight = $state(0);
+
+  // Syncing to <html> (outside this component) is what $effect is for
+  $effect(() => {
+    const root = document.documentElement;
+    // sticky offset (--space-2) + card + breathing room (--space-2)
+    root.style.scrollPaddingTop = savedSticky ? `${savedHeight + 16}px` : '';
+    return () => {
+      root.style.scrollPaddingTop = '';
+    };
+  });
+
   // A chip is selected while its exact name is in the form
   let usedNames = $derived(new Set(mode === 'individuals' ? individualNames : teamMembers.flat()));
   let namesFull = $derived(savedNames.list.length >= MAX_SAVED_NAMES);
@@ -126,6 +143,17 @@
     if (savedNames.list.length === 0) managingNames = false;
   }
 
+  // The mode description sits with the mode picker, so it is chosen here instead of in the panel
+  let introText = $derived(
+    rematch
+      ? 'Reorder the teams and their members, then press Play.'
+      : mode === 'individuals'
+        ? 'Add everyone playing, then start throwing.'
+        : 'Name the teams, then add their members in throwing order.',
+  );
+  const introId = `${errorId}-intro`;
+  const pickerId = `${errorId}-picker`;
+
   function selectMode(next: Mode) {
     mode = next;
     submitted = false;
@@ -136,7 +164,10 @@
       submitted = true;
       // Wait for the error styling to render, then take the person to the first gap
       await tick();
-      form?.querySelector<HTMLElement>('input[aria-invalid="true"]')?.focus();
+      const firstGap = form?.querySelector<HTMLElement>('input[aria-invalid="true"]');
+      firstGap?.focus({ preventScroll: true });
+      // scrollIntoView respects the scroll padding above (jsdom has no scrollIntoView)
+      firstGap?.scrollIntoView?.({ block: 'center' });
       return;
     }
 
@@ -191,6 +222,23 @@
     const team = teams[teamIndex];
     if (team.members.length >= MAX_TEAM_SIZE) return;
     team.members.push('');
+    activeTeam = teamIndex;
+  }
+
+  // Enter (RET on a phone keyboard) only confirms the field and closes the keyboard.
+  // Without this the browser submits the form: it would jump to a gap or start the game.
+  function confirmField(event: KeyboardEvent) {
+    if (event.key !== 'Enter' || !(event.target instanceof HTMLInputElement)) return;
+    event.preventDefault();
+    event.target.blur();
+  }
+
+  // A tap on a team box selects it. `click` (unlike `pointerdown`) does not fire when the
+  // touch turns into a scroll. Buttons inside the box do their own thing: a move or remove
+  // must not re-select the team by its old position afterwards.
+  function selectTeam(event: MouseEvent, teamIndex: number) {
+    if (event.target instanceof Element && event.target.closest('button')) return;
+    activeTeam = teamIndex;
   }
 
   function removeMember(teamIndex: number, memberIndex: number) {
@@ -219,24 +267,41 @@
     disabled={!saved && !canSave(savedNames.list, name)}
     onclick={() => toggleSavedName(name)}
   >
-    <span aria-hidden="true">{saved ? '★' : '☆'}</span>
+    <Icon name="star" filled={saved} />
   </button>
 {/snippet}
 
 {#snippet savedBar()}
   {#if savedNames.list.length > 0}
-    <div class="saved">
+    <div class="saved" class:sticky={savedSticky} bind:offsetHeight={savedHeight}>
       <div class="saved-heading">
-        <span>
-          Saved players
-          {#if mode === 'teams'}
-            <span class="target">· Adding to <strong>{activeTeamLabel}</strong></span>
-          {/if}
-        </span>
+        <span>Saved players</span>
         <button type="button" class="manage" onclick={() => (managingNames = !managingNames)}>
           {managingNames ? 'Done' : 'Edit'}
         </button>
       </div>
+      {#if mode === 'teams' && !managingNames}
+        <!-- Which team the chips add to. Native radios give arrow keys and announcements for free;
+             the labels are the 44px pills. Tapping a team box still selects it too. -->
+        <div class="picker" role="radiogroup" aria-labelledby={`${pickerId}-label`}>
+          <span class="picker-label" id={`${pickerId}-label`}>Add to:</span>
+          {#each teams as team, teamIndex (teamIndex)}
+            <label class="pill" class:on={teamIndex === activeTeam}>
+              <input
+                type="radio"
+                class="visually-hidden"
+                name={pickerId}
+                checked={teamIndex === activeTeam}
+                onchange={() => (activeTeam = teamIndex)}
+              />
+              {#if teamIndex === activeTeam}
+                <Icon name="check" size={16} />
+              {/if}
+              <span class="pill-text">{team.name.trim() || `Team ${teamIndex + 1}`}</span>
+            </label>
+          {/each}
+        </div>
+      {/if}
       <div class="chips">
         {#each visibleNames as name (name)}
           {#if managingNames}
@@ -283,36 +348,43 @@
   {/if}
 {/snippet}
 
+<!-- Groups, top to bottom: header, mode picker, saved players, players/teams, start.
+     The card and the form space groups with one gap (--space-6); inside a group, --space-2. -->
 <section class="setup-card" aria-labelledby="setup-title">
-  <div class="eyebrow">Molkky</div>
-  <h1 id="setup-title">{rematch ? 'Edit teams' : 'Set up your game'}</h1>
+  <header class="group">
+    <div class="eyebrow">Molkky</div>
+    <h1 id="setup-title">{rematch ? 'Edit teams' : 'Set up your game'}</h1>
+  </header>
 
-  {#if !rematch}
-    <div class="tabs" role="tablist" aria-label="Game type">
-      <button
-        type="button"
-        role="tab"
-        id="tab-individuals"
-        aria-selected={mode === 'individuals'}
-        aria-controls="setup-panel"
-        class:active={mode === 'individuals'}
-        onclick={() => selectMode('individuals')}
-      >
-        Individuals
-      </button>
-      <button
-        type="button"
-        role="tab"
-        id="tab-teams"
-        aria-selected={mode === 'teams'}
-        aria-controls="setup-panel"
-        class:active={mode === 'teams'}
-        onclick={() => selectMode('teams')}
-      >
-        Teams
-      </button>
-    </div>
-  {/if}
+  <div class="group">
+    {#if !rematch}
+      <div class="tabs" role="tablist" aria-label="Game type">
+        <button
+          type="button"
+          role="tab"
+          id="tab-individuals"
+          aria-selected={mode === 'individuals'}
+          aria-controls="setup-panel"
+          class:active={mode === 'individuals'}
+          onclick={() => selectMode('individuals')}
+        >
+          Individuals
+        </button>
+        <button
+          type="button"
+          role="tab"
+          id="tab-teams"
+          aria-selected={mode === 'teams'}
+          aria-controls="setup-panel"
+          class:active={mode === 'teams'}
+          onclick={() => selectMode('teams')}
+        >
+          Teams
+        </button>
+      </div>
+    {/if}
+    <p class="intro" id={introId}>{introText}</p>
+  </div>
 
   <form
     bind:this={form}
@@ -322,215 +394,240 @@
       startGame();
     }}
   >
-    <div id="setup-panel" role="tabpanel" aria-labelledby={`tab-${mode}`}>
+    <div
+      id="setup-panel"
+      class="panel"
+      role="tabpanel"
+      aria-labelledby={`tab-${mode}`}
+      aria-describedby={introId}
+    >
+      {@render savedBar()}
+
       {#if mode === 'individuals'}
-        <p class="intro">Add everyone playing, then start throwing.</p>
+        <div class="group">
+          <div class="list-heading">
+            <span>Players: {players.length}</span>
+            <span class="order-label" aria-hidden="true">Order</span>
+          </div>
 
-        {@render savedBar()}
-
-        <div class="list-heading">
-          <span>Players</span>
-          <span>{players.length}</span>
-        </div>
-
-        <div class="list">
-          {#each players as player, index (index)}
-            <div class="row player-row">
-              <span class="number" aria-hidden="true">{index + 1}</span>
-              <div class="field">
-                <input
-                  type="text"
-                  bind:value={players[index]}
-                  placeholder="Player"
-                  aria-label={`Player ${index + 1} name`}
-                  aria-invalid={missing(player)}
-                  aria-describedby={missing(player) ? errorId : undefined}
-                />
-                {@render star(player)}
+          <div class="list">
+            {#each players as player, index (index)}
+              <div class="row player-row">
+                <span class="number" aria-hidden="true">{index + 1}</span>
+                <div class="field">
+                  <input
+                    type="text"
+                    enterkeyhint="done"
+                    onkeydown={confirmField}
+                    bind:value={players[index]}
+                    placeholder="Player"
+                    aria-label={`Player ${index + 1} name`}
+                    aria-invalid={missing(player)}
+                    aria-describedby={missing(player) ? errorId : undefined}
+                  />
+                  {@render star(player)}
+                </div>
+                <button
+                  type="button"
+                  class="icon-button"
+                  onclick={() => movePlayer(index, -1)}
+                  disabled={index === 0}
+                  aria-label={`Move ${player.trim() || `player ${index + 1}`} up`}
+                >
+                  <Icon name="chevron-up" />
+                </button>
+                <button
+                  type="button"
+                  class="icon-button"
+                  onclick={() => movePlayer(index, 1)}
+                  disabled={index === players.length - 1}
+                  aria-label={`Move ${player.trim() || `player ${index + 1}`} down`}
+                >
+                  <Icon name="chevron-down" />
+                </button>
+                <button
+                  type="button"
+                  class="icon-button"
+                  onclick={() => removePlayer(index)}
+                  disabled={players.length <= MIN_PLAYERS && isBlank(player)}
+                  aria-label={`Remove ${player.trim() || `player ${index + 1}`}`}
+                >
+                  <Icon name="trash" />
+                </button>
               </div>
-              <button
-                type="button"
-                class="icon-button"
-                onclick={() => movePlayer(index, -1)}
-                disabled={index === 0}
-                aria-label={`Move ${player.trim() || `player ${index + 1}`} up`}
-              >
-                ↑
-              </button>
-              <button
-                type="button"
-                class="icon-button"
-                onclick={() => movePlayer(index, 1)}
-                disabled={index === players.length - 1}
-                aria-label={`Move ${player.trim() || `player ${index + 1}`} down`}
-              >
-                ↓
-              </button>
-              <button
-                type="button"
-                class="icon-button"
-                onclick={() => removePlayer(index)}
-                disabled={players.length <= MIN_PLAYERS && isBlank(player)}
-                aria-label={`Remove ${player.trim() || `player ${index + 1}`}`}
-              >
-                ✕
-              </button>
-            </div>
-          {/each}
-        </div>
+            {/each}
+          </div>
 
-        <button class="add" type="button" onclick={addPlayer}>+ Add player</button>
+          <button class="add" type="button" onclick={addPlayer}>+ Add player</button>
+        </div>
       {:else}
-        <p class="intro">
-          {#if rematch}
-            Reorder the teams and their members, then press Play.
-          {:else}
-            Name the teams, then add their members in throwing order.
-          {/if}
-        </p>
+        <div class="group">
+          <div class="list-heading in-teams">
+            <span>Teams: {teams.length}</span>
+            <span class="order-label" aria-hidden="true">Order</span>
+          </div>
 
-        {@render savedBar()}
+          <div class="team-list">
+            {#each teams as team, teamIndex (teamIndex)}
+              <!-- Tapping anywhere in a team makes it the target for saved-name chips. This is a
+                   pointer shortcut: keyboard and screen reader users have the "Add to" radios,
+                   and focusing a field in the team selects it too. -->
+              <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+              <fieldset
+                class="team"
+                class:active={teamIndex === activeTeam}
+                onfocusin={() => (activeTeam = teamIndex)}
+                onclick={(event) => selectTeam(event, teamIndex)}
+              >
+                <legend class="visually-hidden">Team {teamIndex + 1}</legend>
 
-        <div class="list-heading">
-          <span>Teams</span>
-          <span>{teams.length}</span>
+                <div class="row team-row">
+                  <input
+                    type="text"
+                    enterkeyhint="done"
+                    onkeydown={confirmField}
+                    class="team-name"
+                    bind:value={team.name}
+                    placeholder="Team"
+                    aria-label={`Team ${teamIndex + 1} name`}
+                    aria-invalid={missing(team.name)}
+                    aria-describedby={missing(team.name) ? errorId : undefined}
+                  />
+                  <button
+                    type="button"
+                    class="icon-button"
+                    onclick={() => moveTeam(teamIndex, -1)}
+                    disabled={teamIndex === 0}
+                    aria-label={`Move ${team.name.trim() || `team ${teamIndex + 1}`} up`}
+                  >
+                    <Icon name="chevron-up" />
+                  </button>
+                  <button
+                    type="button"
+                    class="icon-button"
+                    onclick={() => moveTeam(teamIndex, 1)}
+                    disabled={teamIndex === teams.length - 1}
+                    aria-label={`Move ${team.name.trim() || `team ${teamIndex + 1}`} down`}
+                  >
+                    <Icon name="chevron-down" />
+                  </button>
+                  <button
+                    type="button"
+                    class="icon-button"
+                    onclick={() => removeTeam(teamIndex)}
+                    disabled={teams.length <= MIN_TEAMS && isEmptyTeam(team)}
+                    aria-label={`Remove ${team.name.trim() || `team ${teamIndex + 1}`}`}
+                  >
+                    <Icon name="trash" />
+                  </button>
+                </div>
+
+                <ol class="members">
+                  {#each team.members as member, memberIndex (memberIndex)}
+                    <li class="row member-row">
+                      <span class="number" aria-hidden="true">{memberIndex + 1}</span>
+                      <div class="field">
+                        <input
+                          type="text"
+                          enterkeyhint="done"
+                          onkeydown={confirmField}
+                          bind:value={team.members[memberIndex]}
+                          placeholder="Player"
+                          aria-label={`Team ${teamIndex + 1} member ${memberIndex + 1} name`}
+                          aria-invalid={missing(member)}
+                          aria-describedby={missing(member) ? errorId : undefined}
+                        />
+                        {@render star(member)}
+                      </div>
+                      <button
+                        type="button"
+                        class="icon-button"
+                        onclick={() => moveMember(teamIndex, memberIndex, -1)}
+                        disabled={memberIndex === 0}
+                        aria-label={`Move ${member.trim() || `member ${memberIndex + 1}`} up`}
+                      >
+                        <Icon name="chevron-up" />
+                      </button>
+                      <button
+                        type="button"
+                        class="icon-button"
+                        onclick={() => moveMember(teamIndex, memberIndex, 1)}
+                        disabled={memberIndex === team.members.length - 1}
+                        aria-label={`Move ${member.trim() || `member ${memberIndex + 1}`} down`}
+                      >
+                        <Icon name="chevron-down" />
+                      </button>
+                      <button
+                        type="button"
+                        class="icon-button"
+                        onclick={() => removeMember(teamIndex, memberIndex)}
+                        disabled={team.members.length <= 1 && isBlank(member)}
+                        aria-label={`Remove ${member.trim() || `member ${memberIndex + 1}`}`}
+                      >
+                        <Icon name="trash" />
+                      </button>
+                    </li>
+                  {/each}
+                </ol>
+
+                <button
+                  class="add"
+                  type="button"
+                  onclick={() => addMember(teamIndex)}
+                  disabled={team.members.length >= MAX_TEAM_SIZE}
+                >
+                  + Add member
+                </button>
+                {#if team.members.length >= MAX_TEAM_SIZE}
+                  <p class="note">A team can have up to {MAX_TEAM_SIZE} members.</p>
+                {/if}
+              </fieldset>
+            {/each}
+
+            <!-- Inside the team list, so it sits as far from the last team as teams from each other -->
+            <button class="add" type="button" onclick={addTeam}>+ Add team</button>
+          </div>
         </div>
-
-        {#each teams as team, teamIndex (teamIndex)}
-          <!-- Tapping anywhere in a team makes it the target for saved-name chips.
-               Keyboard users get the same through focusin. -->
-          <fieldset
-            class="team"
-            class:active={teamIndex === activeTeam}
-            onfocusin={() => (activeTeam = teamIndex)}
-            onpointerdown={() => (activeTeam = teamIndex)}
-          >
-            <legend class="visually-hidden">Team {teamIndex + 1}</legend>
-
-            <div class="row team-row">
-              <input
-                type="text"
-                class="team-name"
-                bind:value={team.name}
-                placeholder="Team"
-                aria-label={`Team ${teamIndex + 1} name`}
-                aria-invalid={missing(team.name)}
-                aria-describedby={missing(team.name) ? errorId : undefined}
-              />
-              <button
-                type="button"
-                class="icon-button"
-                onclick={() => moveTeam(teamIndex, -1)}
-                disabled={teamIndex === 0}
-                aria-label={`Move ${team.name.trim() || `team ${teamIndex + 1}`} up`}
-              >
-                ↑
-              </button>
-              <button
-                type="button"
-                class="icon-button"
-                onclick={() => moveTeam(teamIndex, 1)}
-                disabled={teamIndex === teams.length - 1}
-                aria-label={`Move ${team.name.trim() || `team ${teamIndex + 1}`} down`}
-              >
-                ↓
-              </button>
-              <button
-                type="button"
-                class="icon-button"
-                onclick={() => removeTeam(teamIndex)}
-                disabled={teams.length <= MIN_TEAMS && isEmptyTeam(team)}
-                aria-label={`Remove ${team.name.trim() || `team ${teamIndex + 1}`}`}
-              >
-                ✕
-              </button>
-            </div>
-
-            <ol class="members">
-              {#each team.members as member, memberIndex (memberIndex)}
-                <li class="row member-row">
-                  <span class="number" aria-hidden="true">{memberIndex + 1}</span>
-                  <div class="field">
-                    <input
-                      type="text"
-                      bind:value={team.members[memberIndex]}
-                      placeholder="Player"
-                      aria-label={`Team ${teamIndex + 1} member ${memberIndex + 1} name`}
-                      aria-invalid={missing(member)}
-                      aria-describedby={missing(member) ? errorId : undefined}
-                    />
-                    {@render star(member)}
-                  </div>
-                  <button
-                    type="button"
-                    class="icon-button"
-                    onclick={() => moveMember(teamIndex, memberIndex, -1)}
-                    disabled={memberIndex === 0}
-                    aria-label={`Move ${member.trim() || `member ${memberIndex + 1}`} up`}
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    class="icon-button"
-                    onclick={() => moveMember(teamIndex, memberIndex, 1)}
-                    disabled={memberIndex === team.members.length - 1}
-                    aria-label={`Move ${member.trim() || `member ${memberIndex + 1}`} down`}
-                  >
-                    ↓
-                  </button>
-                  <button
-                    type="button"
-                    class="icon-button"
-                    onclick={() => removeMember(teamIndex, memberIndex)}
-                    disabled={team.members.length <= 1 && isBlank(member)}
-                    aria-label={`Remove ${member.trim() || `member ${memberIndex + 1}`}`}
-                  >
-                    ✕
-                  </button>
-                </li>
-              {/each}
-            </ol>
-
-            <button
-              class="add"
-              type="button"
-              onclick={() => addMember(teamIndex)}
-              disabled={team.members.length >= MAX_TEAM_SIZE}
-            >
-              + Add member
-            </button>
-            {#if team.members.length >= MAX_TEAM_SIZE}
-              <p class="note">A team can have up to {MAX_TEAM_SIZE} members.</p>
-            {/if}
-          </fieldset>
-        {/each}
-
-        <button class="add" type="button" onclick={addTeam}>+ Add team</button>
       {/if}
     </div>
 
-    {#if submitted && !ready}
-      <p id={errorId} class="error" role="alert">{errorMessage}</p>
-    {/if}
-
-    <div class="actions" class:with-cancel={rematch}>
-      {#if rematch}
-        <button class="btn cancel" type="button" onclick={cancelEditTeams}>Cancel</button>
+    <div class="group">
+      {#if submitted && !ready}
+        <p id={errorId} class="error" role="alert">{errorMessage}</p>
       {/if}
-      <button class="btn btn-primary start" type="submit">{rematch ? 'Play' : 'Start game'}</button>
+
+      <div class="actions" class:with-cancel={rematch}>
+        {#if rematch}
+          <button class="btn cancel" type="button" onclick={cancelEditTeams}>Cancel</button>
+        {/if}
+        <button class="btn btn-primary start" type="submit"
+          >{rematch ? 'Play' : 'Start game'}</button
+        >
+      </div>
     </div>
   </form>
 </section>
 
 <style>
-  .setup-card {
+  .setup-card,
+  form,
+  .panel {
     display: grid;
-    gap: 0.75rem;
+    gap: var(--space-6);
+  }
+  .group {
+    display: grid;
+    gap: var(--space-2);
+  }
+  .team-list {
+    display: grid;
+    gap: var(--space-4);
+  }
+  .setup-card {
     width: min(100%, 560px);
-    padding: clamp(20px, 6vw, 44px);
+    padding: var(--space-8);
     border: 1px solid var(--line);
-    border-radius: clamp(18px, 4vw, 24px);
+    border-radius: var(--radius-lg);
     background: var(--surface);
     box-shadow: 0 20px 50px rgb(55 45 25 / 12%);
   }
@@ -544,27 +641,24 @@
   h1 {
     margin: 0;
   }
-  form {
-    margin-top: 1.5rem;
-  }
   .intro {
-    margin: 0 0 0.75rem;
+    margin: 0;
     color: var(--text-muted);
   }
   .tabs {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0.25rem;
-    padding: 0.25rem;
+    gap: var(--space-1);
+    padding: var(--space-1);
     border: 1px solid var(--line);
-    border-radius: 0.625rem;
+    border-radius: var(--radius-md);
     background: var(--surface-muted);
   }
   .tabs button {
     min-height: 44px;
-    padding: 0.5rem;
+    padding: var(--space-2);
     border: none;
-    border-radius: 0.45rem;
+    border-radius: var(--radius-sm);
     background: none;
     color: var(--text-muted);
   }
@@ -574,21 +668,31 @@
     font-weight: 700;
     box-shadow: 0 1px 3px rgb(31 43 32 / 25%);
   }
+  /* Columns line up with the rows below: label, the two order arrows, the remove button */
   .list-heading {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 0.5rem;
+    display: grid;
+    grid-template-columns: 1fr calc(88px + 0.5rem) 44px;
+    align-items: end;
+    gap: var(--space-2);
     font-weight: 600;
+  }
+  /* Team rows sit inside the team box: match its padding (--space-3) and border (2px) */
+  .list-heading.in-teams {
+    padding-inline: calc(var(--space-3) + 2px);
+  }
+  .order-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-align: center;
   }
   .list {
     display: grid;
-    gap: 0.5rem;
-    margin-bottom: 0.75rem;
+    gap: var(--space-2);
   }
   .row {
     display: grid;
     align-items: center;
-    gap: 0.5rem;
+    gap: var(--space-2);
   }
   .player-row {
     grid-template-columns: 2ch 1fr auto auto auto;
@@ -607,9 +711,9 @@
     width: 100%;
     min-width: 0;
     min-height: 44px;
-    padding: 0.6rem;
+    padding: var(--space-2) var(--space-3);
     border: 2px solid var(--border);
-    border-radius: 0.5rem;
+    border-radius: var(--radius-sm);
     outline: none;
     background: var(--surface);
   }
@@ -625,7 +729,7 @@
     border-color: var(--danger);
   }
   .error {
-    margin: 0.5rem 0 0;
+    margin: 0;
     font-size: 0.9rem;
     font-weight: 600;
     color: var(--danger);
@@ -647,32 +751,34 @@
     position: absolute;
     top: 0;
     right: 0;
+    display: grid;
+    place-items: center;
     width: 44px;
     height: 100%;
     padding: 0;
     border: none;
-    border-radius: 0 0.5rem 0.5rem 0;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
     background: none;
     color: var(--text-muted);
-    font-size: 1.25rem;
   }
   .star[aria-pressed='true'] {
     color: var(--primary);
   }
   .star:disabled {
-    opacity: 0.35;
+    opacity: 0.45;
   }
   .saved {
     display: grid;
-    gap: 0.5rem;
-    margin-bottom: 0.75rem;
-    padding: 0.75rem;
+    gap: var(--space-2);
+    padding: var(--space-3);
     border: 1px solid var(--line);
-    border-radius: 0.625rem;
+    border-radius: var(--radius-md);
     background: var(--surface);
-    /* Stays in reach while scrolling a long list, in both modes */
+  }
+  /* Stays in reach while scrolling a long list, in both modes (only while compact) */
+  .saved.sticky {
     position: sticky;
-    top: 0.5rem;
+    top: var(--space-2);
     z-index: 1;
     box-shadow: 0 4px 12px rgb(55 45 25 / 10%);
   }
@@ -680,19 +786,57 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 0.5rem;
+    gap: var(--space-2);
     font-weight: 600;
   }
-  .target {
-    font-weight: 400;
+  .picker {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .picker-label {
     color: var(--text-muted);
   }
-  .target strong {
+  /* Distinct from the name chips: a selected chip is solid green, the selected team is tinted */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    max-width: 12rem;
+    min-height: 44px;
+    padding: 0 var(--space-3);
+    border: 2px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+      background-color 120ms ease,
+      border-color 120ms ease;
+  }
+  .pill.on {
+    border-color: var(--primary);
+    background: var(--success-bg);
     color: var(--primary);
+  }
+  .pill:has(input:focus-visible) {
+    outline: 3px solid var(--primary);
+    outline-offset: 2px;
+  }
+  .pill-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pill {
+      transition: none;
+    }
   }
   .manage {
     min-height: 44px;
-    padding: 0 0.5rem;
+    padding: 0 var(--space-2);
     border: none;
     background: none;
     color: var(--primary);
@@ -701,11 +845,11 @@
   .chips {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: var(--space-2);
   }
   .chip {
     min-height: 44px;
-    padding: 0 0.9rem;
+    padding: 0 var(--space-3);
     border: 2px solid var(--border);
     border-radius: 999px;
     background: var(--surface);
@@ -724,7 +868,7 @@
   }
   .more {
     min-height: 44px;
-    padding: 0 0.5rem;
+    padding: 0 var(--space-2);
     border: none;
     background: none;
     color: var(--primary);
@@ -748,40 +892,69 @@
   }
   .team {
     display: grid;
-    gap: 0.5rem;
-    margin: 0 0 0.75rem;
-    padding: 0.75rem;
+    gap: var(--space-2);
+    margin: 0;
+    padding: var(--space-3);
     border: 2px solid var(--line);
-    border-radius: 0.625rem;
+    border-radius: var(--radius-md);
   }
   .members {
     list-style: none;
     display: grid;
-    gap: 0.5rem;
+    gap: var(--space-2);
     margin: 0;
     padding: 0;
   }
+  /* Borderless icon buttons: the icon is 20px, the tap area stays 44px. A round highlight
+     shows the press, so the row stays calm without boxes. */
   .icon-button {
+    display: grid;
+    place-items: center;
     min-width: 44px;
     min-height: 44px;
     padding: 0;
-    border: 2px solid var(--border);
-    border-radius: 0.5rem;
-    background: var(--surface);
+    border: none;
+    border-radius: 50%;
+    background: none;
+    color: var(--text-muted);
+    transition: background-color 120ms ease;
+  }
+  .icon-button:active:not(:disabled) {
+    background: var(--surface-muted);
+    color: var(--text);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .icon-button {
+      transition: none;
+    }
   }
   .add {
     min-height: 44px;
-    padding: 0.6rem;
-    border: 2px dashed var(--border);
-    border-radius: 0.5rem;
-    background: none;
+    padding: var(--space-2) var(--space-3);
+    border: 2px solid var(--primary);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
     color: var(--primary);
     font-weight: 600;
+    transition:
+      background-color 120ms ease,
+      transform 80ms ease;
+  }
+  .add:active:not(:disabled) {
+    background: var(--success-bg);
+    transform: scale(0.98);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .add {
+      transition: none;
+    }
+    .add:active:not(:disabled) {
+      transform: none;
+    }
   }
   .actions {
     display: grid;
-    gap: 0.5rem;
-    margin-top: 0.75rem;
+    gap: var(--space-2);
   }
   .actions.with-cancel {
     grid-template-columns: 1fr 2fr;
@@ -802,6 +975,11 @@
     margin: 0;
     font-size: 0.9rem;
     color: var(--text-muted);
+  }
+  @media (max-width: 440px) {
+    .setup-card {
+      padding: var(--space-4);
+    }
   }
   .visually-hidden {
     position: absolute;

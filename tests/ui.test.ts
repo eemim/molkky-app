@@ -233,7 +233,7 @@ describe('Saved players', () => {
     tap(button('Teams'));
     tap(chip('John'));
 
-    teamBoxes()[1].dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    teamBoxes()[1].click();
     flushSync();
     tap(chip('Jane'));
     tap(chip('John'));
@@ -291,10 +291,10 @@ describe('Saved players', () => {
     tap(chip('Ada'));
     tap(chip('John'));
 
-    teamBoxes()[1].dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    teamBoxes()[1].click();
     flushSync();
     expect(teamBoxes()[1].classList.contains('active')).toBe(true);
-    expect(document.querySelector('.target')?.textContent).toMatch(/Team 2/);
+    expect(document.querySelector('.pill.on')?.textContent).toMatch(/Team 2/);
     tap(chip('Jane'));
     tap(chip('Max'));
 
@@ -302,11 +302,53 @@ describe('Saved players', () => {
     expect(memberValues(1)).toEqual(['Jane', 'Max']);
   });
 
+  it('picks the target team from the pills in the saved card', () => {
+    for (const name of ['Jane', 'John']) saveName(name);
+    render(Setup);
+    tap(button('Teams'));
+    type(inputs()[2], 'Red');
+
+    const radios = () => [...document.querySelectorAll<HTMLInputElement>('.picker input')];
+    expect(radios().map((r) => r.checked)).toEqual([true, false]);
+    expect(document.querySelector('.picker')?.textContent).toMatch(/Team 1.*Red/s);
+
+    tap(radios()[1]);
+    expect(radios().map((r) => r.checked)).toEqual([false, true]);
+    expect(teamBoxes()[1].classList.contains('active')).toBe(true);
+
+    tap(chip('John'));
+    expect(memberValues(1)).toEqual(['John']);
+
+    // Edit mode is for removing saved names, so the team picker steps aside
+    tap(button('Edit'));
+    expect(document.querySelector('.picker')).toBeNull();
+  });
+
+  it('selects a team box on a tap, not when a touch starts (it may be a scroll)', () => {
+    render(Setup);
+    tap(button('Teams'));
+
+    teamBoxes()[1].dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    flushSync();
+    expect(teamBoxes()[0].classList.contains('active')).toBe(true);
+
+    tap(teamBoxes()[1]);
+    expect(teamBoxes()[1].classList.contains('active')).toBe(true);
+  });
+
+  it('adding a member selects that team', () => {
+    render(Setup);
+    tap(button('Teams'));
+    const addMemberButtons = [...document.querySelectorAll<HTMLButtonElement>('.team .add')];
+    tap(addMemberButtons[1]);
+    expect(teamBoxes()[1].classList.contains('active')).toBe(true);
+  });
+
   it('keeps the same team active when the teams are reordered or removed', () => {
     render(Setup);
     tap(button('Teams'));
     type(inputs()[2], 'Blue');
-    teamBoxes()[1].dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    teamBoxes()[1].click();
     flushSync();
 
     tap(document.querySelector<HTMLButtonElement>('[aria-label="Move Blue up"]')!);
@@ -316,6 +358,19 @@ describe('Saved players', () => {
     expect(teamBoxes()[2].classList.contains('active')).toBe(true);
     tap(document.querySelector<HTMLButtonElement>('[aria-label="Remove team 3"]')!);
     expect(teamBoxes()[1].classList.contains('active')).toBe(true);
+  });
+
+  it('only keeps the saved card sticky while it is compact', () => {
+    for (let i = 7; i >= 1; i--) saveName(`Player ${i}`);
+    render(Setup);
+    const card = () => document.querySelector('.saved')!;
+
+    expect(card().classList.contains('sticky')).toBe(true);
+    tap(button('Show 2 more'));
+    expect(card().classList.contains('sticky')).toBe(false);
+    tap(button('Show less'));
+    tap(button('Edit'));
+    expect(card().classList.contains('sticky')).toBe(false);
   });
 
   it('disables unselected chips when the active team is full', () => {
@@ -351,6 +406,25 @@ describe('Saved players', () => {
 
     expect(view.state?.players.map((p) => p.name)).toEqual(['John', 'Jane']);
     expect(savedNames.list).toEqual(['John', 'Jane', 'Max']);
+  });
+});
+
+describe('Enter key in Setup', () => {
+  it('only confirms the field: no jumping to a gap and no game start', async () => {
+    render(Setup);
+    for (const [i, name] of ['John', 'Jane'].entries()) {
+      inputs()[i].value = name;
+      inputs()[i].dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    inputs()[1].focus();
+    const enter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+    inputs()[1].dispatchEvent(enter);
+    await tick();
+
+    expect(enter.defaultPrevented).toBe(true);
+    expect(document.activeElement).not.toBe(inputs()[1]);
+    expect(view.state).toBeNull();
+    expect(inputs().every((i) => i.getAttribute('enterkeyhint') === 'done')).toBe(true);
   });
 });
 

@@ -7,3 +7,12 @@ if (typeof HTMLDialogElement !== 'undefined') {
     this.removeAttribute('open');
   };
 }
+
+// jsdom has no ResizeObserver; Svelte's bind:offsetHeight needs one (sizes stay 0 in tests)
+if (typeof window !== 'undefined' && !('ResizeObserver' in window)) {
+  window.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+}
