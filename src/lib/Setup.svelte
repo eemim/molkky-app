@@ -297,7 +297,7 @@
               {#if teamIndex === activeTeam}
                 <Icon name="check" size={16} />
               {/if}
-              <span class="pill-text">{team.name.trim() || `Team ${teamIndex + 1}`}</span>
+              <span class="truncate">{team.name.trim() || `Team ${teamIndex + 1}`}</span>
             </label>
           {/each}
         </div>
@@ -311,7 +311,7 @@
               aria-label={`Remove ${name} from saved players`}
               onclick={() => removeSavedName(name)}
             >
-              {name} <span aria-hidden="true">✕</span>
+              <span class="truncate">{name}</span> <span aria-hidden="true">✕</span>
             </button>
           {:else}
             {@const selected = usedNames.has(name)}
@@ -323,7 +323,7 @@
               disabled={activeTeamFull && !selected}
               onclick={() => toggleName(name)}
             >
-              {name}
+              <span class="truncate">{name}</span>
             </button>
           {/if}
         {/each}
@@ -803,7 +803,7 @@
     display: inline-flex;
     align-items: center;
     gap: var(--space-1);
-    max-width: 12rem;
+    max-width: var(--name-max);
     min-height: 44px;
     padding: 0 var(--space-3);
     border: 2px solid var(--border);
@@ -824,11 +824,6 @@
     outline: 3px solid var(--primary);
     outline-offset: 2px;
   }
-  .pill-text {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
   @media (prefers-reduced-motion: reduce) {
     .pill {
       transition: none;
@@ -848,6 +843,10 @@
     gap: var(--space-2);
   }
   .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    max-width: var(--name-max);
     min-height: 44px;
     padding: 0 var(--space-3);
     border: 2px solid var(--border);
@@ -973,6 +972,7 @@
   }
   .note {
     margin: 0;
+    overflow-wrap: anywhere; /* a long team name in "X is full." wraps */
     font-size: 0.9rem;
     color: var(--text-muted);
   }

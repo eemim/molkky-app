@@ -2,6 +2,8 @@
   import { view } from './gameStore.svelte';
   import { currentThrower } from './molkky';
   import ThrowTable from './ThrowTable.svelte';
+  import Icon from './Icon.svelte';
+  import PlaceBadge from './PlaceBadge.svelte';
 
   let open = $state<number | null>(null);
 
@@ -18,9 +20,9 @@
   <ul class="scoreboard">
     {#each game.players as player, index (index)}
       <li
+        class:finished={player.finishedAt !== null}
         class:current={index === game.current && !game.ended}
         class:eliminated={player.eliminated}
-        class:finished={player.finishedAt !== null}
       >
         <div class="row">
           <div class="who">
@@ -30,15 +32,39 @@
               aria-expanded={open === index}
               onclick={() => toggle(index)}
             >
-              {open === index ? '▾' : '▸'}
-              {player.name}
+              <!-- Down: the card can be opened. Up: it can be closed. -->
+              <Icon name={open === index ? 'chevron-up' : 'chevron-down'} />
+              <span class="truncate">{player.name}</span>
             </button>
-            {#if thrower && index === game.current}
-              <span class="thrower">{thrower} is up</span>
+            {#if index === game.current && !game.ended}
+              <!-- The active card is also tinted green; the label means colour is not the only cue -->
+              {#if thrower}
+                <span class="thrower"><span class="truncate">{thrower}</span> is up</span>
+              {:else}
+                <span class="thrower">Throwing</span>
+              {/if}
             {/if}
           </div>
-          <span class="place">{player.finishedAt !== null ? `#${player.finishedAt}` : ''}</span>
-          <span class="misses">{'✕'.repeat(player.misses)}</span>
+          <span class="place">
+            {#if player.finishedAt !== null}
+              <PlaceBadge place={player.finishedAt} />
+            {/if}
+          </span>
+          {#if player.eliminated}
+            <!-- The struck-through grey card shows it; this says it to screen readers -->
+            <span class="visually-hidden">out</span>
+          {:else}
+            <span class="misses">
+              {#each Array.from({ length: player.misses }, (_, i) => i) as i (i)}
+                <Icon name="x" size={18} />
+              {/each}
+              {#if player.misses > 0}
+                <span class="visually-hidden">
+                  {player.misses === 1 ? '1 miss' : `${player.misses} misses`}
+                </span>
+              {/if}
+            </span>
+          {/if}
           <span class="score">{player.score}</span>
         </div>
 
@@ -56,23 +82,35 @@
     padding: 0;
     margin: 0;
     display: grid;
+    /* minmax(0, …): a plain 1fr column never shrinks below its longest unbroken name */
+    grid-template-columns: minmax(0, 1fr);
     gap: 0.5rem;
   }
   li {
     padding: 0.25rem 1rem;
-    border: 2px solid var(--line);
+    border: 2px solid var(--card-border, var(--line));
     border-radius: 0.625rem;
-    background: var(--surface);
+    background: var(--card-bg, var(--surface));
   }
   .row {
     display: grid;
-    grid-template-columns: 1fr auto auto auto;
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
     align-items: center;
     gap: 1rem;
   }
   .who {
     display: grid;
     justify-items: start;
+    min-width: 0; /* lets a long name shrink instead of pushing the score off-screen */
+  }
+  .name,
+  .thrower {
+    display: flex;
+    align-items: center;
+    gap: 0.3em;
+    min-width: 0; /* buttons keep their text width as a minimum unless told otherwise */
+    max-width: 100%;
+    white-space: nowrap;
   }
   .name {
     min-height: 44px;
@@ -94,17 +132,40 @@
     text-align: right;
   }
   .misses {
+    display: flex;
     color: var(--danger);
   }
+  /* Whose turn it is: light green with the olive border (text 11.8:1 on it) */
   .current {
-    border-color: var(--primary);
+    --card-bg: var(--success-bg);
+    --card-border: var(--primary);
+  }
+  /* Reached 50: the card sinks into the page (page colour, dashed border, muted text) so it
+     reads as done, while staying tappable. The coloured badge carries the place. */
+  .finished {
+    --card-bg: var(--bg);
+    --card-border: var(--border);
+    border-style: dashed;
+    color: var(--text-muted);
+  }
+  /* Out: grey card with a solid border (finished cards are page-coloured and dashed), the
+     row in grey (5:1), and one line struck through the whole row. */
+  .eliminated {
+    --card-bg: var(--surface-muted);
+    --card-border: var(--border);
   }
   .eliminated .row {
     color: var(--text-muted);
-    text-decoration: line-through;
+    position: relative;
   }
-  .finished {
-    border-color: var(--primary);
-    background: var(--success-bg);
+  /* One continuous strike line across the row (not per word); decorative, so it ignores taps */
+  .eliminated .row::after {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    top: 50%;
+    height: 2px;
+    background: var(--text-muted);
+    pointer-events: none;
   }
 </style>

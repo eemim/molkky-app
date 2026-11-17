@@ -56,7 +56,7 @@
       <tbody>
         {#each summary as stat (stat)}
           <tr>
-            <td>{stat.name}</td>
+            <td><span class="truncate cell-name">{stat.name}</span></td>
             <td>{stat.throws}</td>
             <td>{stat.points}</td>
             <td>{stat.misses}</td>
@@ -83,7 +83,7 @@
         <tr class:miss={row.points === 0}>
           <td>{row.round}</td>
           {#if isTeam}
-            <td class="thrower">{row.member}</td>
+            <td class="thrower"><span class="truncate cell-name">{row.member}</span></td>
           {/if}
           <td class="points">
             {#if editable}
@@ -125,6 +125,11 @@
     margin-top: 0.5rem;
     border-collapse: collapse;
     font-size: 0.95rem;
+  }
+  /* Table cells grow with their content, so names get a fixed cap before the "…" */
+  .cell-name {
+    display: block;
+    max-width: 7rem;
   }
   .summary,
   .throws {

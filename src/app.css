@@ -12,6 +12,13 @@
   --success-bg: #dcebcf;
   --danger: #b3261e;
 
+  /* Finish-place badges (solid, with --text on them: gold 7.4:1, silver 6.7:1, bronze 5.2:1).
+     --gold-border marks the winner's card on Results (4:1+ against the page). */
+  --gold: #e0b10f;
+  --gold-border: #8a6a00;
+  --silver: #a9b0b8;
+  --bronze: #cd8a4f;
+
   /* Spacing scale (4/8px): --space-2 inside a group, --space-6 between groups */
   --space-1: 4px;
   --space-2: 8px;
@@ -24,6 +31,9 @@
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 20px;
+
+  /* Widest a name chip or pill may get before its name is cut with "…" */
+  --name-max: 12rem;
 
   font-family:
     Inter,
@@ -76,6 +86,9 @@ select:focus-visible {
 
 main {
   display: grid;
+  /* minmax(0, …): the column is the screen width, never the width of a long one-line name.
+     Without it a long name widens the column and pushes the centred screen off to the side. */
+  grid-template-columns: minmax(0, 1fr);
   min-height: 100svh;
   padding: 32px 20px;
   place-items: center;
@@ -86,6 +99,26 @@ h1 {
   font-size: clamp(2rem, 6vw, 3rem);
   letter-spacing: -0.055em;
   line-height: 1.05;
+}
+
+/* Long names in labels (chips, rows, table cells, headings): one line, cut with "…",
+   so a long name never stretches the layout. The element's parent must allow it to
+   shrink (min-width: 0 on flex/grid items). Names inside sentences wrap instead. */
+.truncate {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Text for screen readers only (e.g. "2 misses" next to the miss icons) */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 /* Shared action button: Miss/Score, game controls, results actions, dialog actions. */
