@@ -62,6 +62,20 @@ describe('New game confirmation', () => {
   });
 });
 
+describe('Game controls', () => {
+  it('shows the Results button only once someone has reached 50', () => {
+    start(['John', 'Jane']);
+    render(Controls);
+    expect(button('Results')).toBeUndefined();
+    expect(button('Undo')).toBeTruthy();
+    expect(button('New game')).toBeTruthy();
+
+    for (const pins of [[12], [1], [12], [1], [12], [1], [12], [1], [2]]) throwPins(pins);
+    flushSync();
+    expect(button('Results')).toBeTruthy();
+  });
+});
+
 describe('Rematch dialog', () => {
   it('uses the shared dialog and offers Edit teams only in team games', () => {
     start(['Ada', 'Lin']);
