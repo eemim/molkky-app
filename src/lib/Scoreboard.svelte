@@ -30,11 +30,11 @@
               aria-expanded={open === index}
               onclick={() => toggle(index)}
             >
-              {open === index ? '▾' : '▸'}
-              {player.name}
+              <span aria-hidden="true">{open === index ? '▾' : '▸'}</span>
+              <span class="truncate">{player.name}</span>
             </button>
             {#if thrower && index === game.current}
-              <span class="thrower">{thrower} is up</span>
+              <span class="thrower"><span class="truncate">{thrower}</span> is up</span>
             {/if}
           </div>
           <span class="place">{player.finishedAt !== null ? `#${player.finishedAt}` : ''}</span>
@@ -56,6 +56,8 @@
     padding: 0;
     margin: 0;
     display: grid;
+    /* minmax(0, …): a plain 1fr column never shrinks below its longest unbroken name */
+    grid-template-columns: minmax(0, 1fr);
     gap: 0.5rem;
   }
   li {
@@ -66,13 +68,23 @@
   }
   .row {
     display: grid;
-    grid-template-columns: 1fr auto auto auto;
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
     align-items: center;
     gap: 1rem;
   }
   .who {
     display: grid;
     justify-items: start;
+    min-width: 0; /* lets a long name shrink instead of pushing the score off-screen */
+  }
+  .name,
+  .thrower {
+    display: flex;
+    align-items: center;
+    gap: 0.3em;
+    min-width: 0; /* buttons keep their text width as a minimum unless told otherwise */
+    max-width: 100%;
+    white-space: nowrap;
   }
   .name {
     min-height: 44px;

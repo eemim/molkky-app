@@ -43,6 +43,7 @@
   }
   h2 {
     margin: 0;
+    overflow-wrap: anywhere;
     padding-right: 2rem;
   }
   .body {
@@ -50,6 +51,7 @@
   }
   .body :global(p) {
     margin: 0;
+    overflow-wrap: anywhere; /* a long name in a sentence wraps instead of overflowing */
   }
   .close {
     position: absolute;

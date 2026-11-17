@@ -39,7 +39,7 @@
 
 {#if view.state && rows.length > 0}
   <section class="results">
-    <h1>{rows[0].player.name} wins!</h1>
+    <h1 class="winner"><span class="truncate">{rows[0].player.name}</span> wins!</h1>
 
     <ol>
       {#each rows as { player, rank }, position (position)}
@@ -53,8 +53,8 @@
               aria-expanded={open === index}
               onclick={() => toggle(index)}
             >
-              {open === index ? '▾' : '▸'}
-              {player.name}
+              <span aria-hidden="true">{open === index ? '▾' : '▸'}</span>
+              <span class="truncate">{player.name}</span>
             </button>
             <span class="status">
               {player.finishedAt !== null ? 'reached 50' : player.eliminated ? 'out' : ''}
@@ -106,6 +106,7 @@
     padding: 0;
     margin: 1rem 0;
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 0.5rem;
   }
   li {
@@ -124,7 +125,7 @@
   }
   .row {
     display: grid;
-    grid-template-columns: 2ch 1fr auto auto;
+    grid-template-columns: 2ch minmax(0, 1fr) auto auto;
     align-items: center;
     gap: 1rem;
   }
@@ -136,7 +137,17 @@
     font-size: 0.85rem;
     color: var(--text-muted);
   }
+  .winner {
+    display: flex;
+    gap: 0.25em;
+    white-space: nowrap;
+  }
   .name {
+    display: flex;
+    align-items: center;
+    gap: 0.3em;
+    min-width: 0;
+    max-width: 100%;
     min-height: 44px;
     padding: 0.5rem 0;
     text-align: left;

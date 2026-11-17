@@ -25,6 +25,9 @@
   --radius-md: 12px;
   --radius-lg: 20px;
 
+  /* Widest a name chip or pill may get before its name is cut with "…" */
+  --name-max: 12rem;
+
   font-family:
     Inter,
     ui-sans-serif,
@@ -76,6 +79,9 @@ select:focus-visible {
 
 main {
   display: grid;
+  /* minmax(0, …): the column is the screen width, never the width of a long one-line name.
+     Without it a long name widens the column and pushes the centred screen off to the side. */
+  grid-template-columns: minmax(0, 1fr);
   min-height: 100svh;
   padding: 32px 20px;
   place-items: center;
@@ -86,6 +92,16 @@ h1 {
   font-size: clamp(2rem, 6vw, 3rem);
   letter-spacing: -0.055em;
   line-height: 1.05;
+}
+
+/* Long names in labels (chips, rows, table cells, headings): one line, cut with "…",
+   so a long name never stretches the layout. The element's parent must allow it to
+   shrink (min-width: 0 on flex/grid items). Names inside sentences wrap instead. */
+.truncate {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Shared action button: Miss/Score, game controls, results actions, dialog actions. */
