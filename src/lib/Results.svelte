@@ -64,7 +64,7 @@
               {#if player.finishedAt !== null}
                 <PlaceBadge place={player.finishedAt} label="reached 50" />
               {:else if player.eliminated}
-                out
+                <span class="visually-hidden">out</span>
               {/if}
             </span>
             <span class="score">{player.score}</span>
@@ -128,9 +128,24 @@
     --card-border: var(--gold-border);
     border-width: 2px;
   }
+  /* Same "out" look as on the game screen */
+  li.eliminated {
+    --card-bg: var(--surface-muted);
+    --card-border: var(--border);
+  }
   li.eliminated .row {
     color: var(--text-muted);
-    text-decoration: line-through;
+    position: relative;
+  }
+  /* One continuous strike line across the row (not per word); decorative, so it ignores taps */
+  li.eliminated .row::after {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    top: 50%;
+    height: 2px;
+    background: var(--text-muted);
+    pointer-events: none;
   }
   .row {
     display: grid;

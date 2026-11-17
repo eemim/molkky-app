@@ -50,16 +50,21 @@
               <PlaceBadge place={player.finishedAt} />
             {/if}
           </span>
-          <span class="misses">
-            {#each Array.from({ length: player.misses }, (_, i) => i) as i (i)}
-              <Icon name="x" size={18} />
-            {/each}
-            {#if player.misses > 0}
-              <span class="visually-hidden">
-                {player.misses === 1 ? '1 miss' : `${player.misses} misses`}
-              </span>
-            {/if}
-          </span>
+          {#if player.eliminated}
+            <!-- The struck-through grey card shows it; this says it to screen readers -->
+            <span class="visually-hidden">out</span>
+          {:else}
+            <span class="misses">
+              {#each Array.from({ length: player.misses }, (_, i) => i) as i (i)}
+                <Icon name="x" size={18} />
+              {/each}
+              {#if player.misses > 0}
+                <span class="visually-hidden">
+                  {player.misses === 1 ? '1 miss' : `${player.misses} misses`}
+                </span>
+              {/if}
+            </span>
+          {/if}
           <span class="score">{player.score}</span>
         </div>
 
@@ -143,8 +148,24 @@
     border-style: dashed;
     color: var(--text-muted);
   }
+  /* Out: grey card with a solid border (finished cards are page-coloured and dashed), the
+     row in grey (5:1), and one line struck through the whole row. */
+  .eliminated {
+    --card-bg: var(--surface-muted);
+    --card-border: var(--border);
+  }
   .eliminated .row {
     color: var(--text-muted);
-    text-decoration: line-through;
+    position: relative;
+  }
+  /* One continuous strike line across the row (not per word); decorative, so it ignores taps */
+  .eliminated .row::after {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    top: 50%;
+    height: 2px;
+    background: var(--text-muted);
+    pointer-events: none;
   }
 </style>

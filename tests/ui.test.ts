@@ -530,6 +530,21 @@ describe('Active player and finish places', () => {
     expect(cards()[1].classList.contains('first')).toBe(false);
   });
 
+  it('marks a player who is out with a struck-through card instead of the miss icons', () => {
+    start(['John', 'Jane', 'Max']);
+    for (let round = 0; round < 3; round++) {
+      throwPins([]); // John misses
+      throwPins([5]);
+      throwPins([5]);
+    }
+    render(Scoreboard);
+
+    expect(cards()[0].classList.contains('eliminated')).toBe(true);
+    expect(cards()[0].querySelector('.visually-hidden')?.textContent?.trim()).toBe('out');
+    expect(cards()[0].querySelector('.misses')).toBeNull();
+    expect(cards()[1].classList.contains('eliminated')).toBe(false);
+  });
+
   it('writes places as ordinals', () => {
     expect([1, 2, 3, 4, 11, 12, 13, 21, 22, 23].map(ordinal)).toEqual([
       '1st',
