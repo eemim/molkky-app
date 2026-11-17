@@ -3,6 +3,7 @@
   import { currentThrower } from './molkky';
   import ThrowTable from './ThrowTable.svelte';
   import Icon from './Icon.svelte';
+  import PlaceBadge from './PlaceBadge.svelte';
 
   let open = $state<number | null>(null);
 
@@ -19,9 +20,9 @@
   <ul class="scoreboard">
     {#each game.players as player, index (index)}
       <li
+        class:finished={player.finishedAt !== null}
         class:current={index === game.current && !game.ended}
         class:eliminated={player.eliminated}
-        class:finished={player.finishedAt !== null}
       >
         <div class="row">
           <div class="who">
@@ -35,11 +36,20 @@
               <Icon name={open === index ? 'chevron-up' : 'chevron-down'} />
               <span class="truncate">{player.name}</span>
             </button>
-            {#if thrower && index === game.current}
-              <span class="thrower"><span class="truncate">{thrower}</span> is up</span>
+            {#if index === game.current && !game.ended}
+              <!-- The active card is also tinted green; the label means colour is not the only cue -->
+              {#if thrower}
+                <span class="thrower"><span class="truncate">{thrower}</span> is up</span>
+              {:else}
+                <span class="thrower">Throwing</span>
+              {/if}
             {/if}
           </div>
-          <span class="place">{player.finishedAt !== null ? `#${player.finishedAt}` : ''}</span>
+          <span class="place">
+            {#if player.finishedAt !== null}
+              <PlaceBadge place={player.finishedAt} />
+            {/if}
+          </span>
           <span class="misses">
             {#each Array.from({ length: player.misses }, (_, i) => i) as i (i)}
               <Icon name="x" size={18} />
@@ -73,9 +83,9 @@
   }
   li {
     padding: 0.25rem 1rem;
-    border: 2px solid var(--line);
+    border: 2px solid var(--card-border, var(--line));
     border-radius: 0.625rem;
-    background: var(--surface);
+    background: var(--card-bg, var(--surface));
   }
   .row {
     display: grid;
@@ -120,15 +130,21 @@
     display: flex;
     color: var(--danger);
   }
+  /* Whose turn it is: light green with the olive border (text 11.8:1 on it) */
   .current {
-    border-color: var(--primary);
+    --card-bg: var(--success-bg);
+    --card-border: var(--primary);
+  }
+  /* Reached 50: the card sinks into the page (page colour, dashed border, muted text) so it
+     reads as done, while staying tappable. The coloured badge carries the place. */
+  .finished {
+    --card-bg: var(--bg);
+    --card-border: var(--border);
+    border-style: dashed;
+    color: var(--text-muted);
   }
   .eliminated .row {
     color: var(--text-muted);
     text-decoration: line-through;
-  }
-  .finished {
-    border-color: var(--primary);
-    background: var(--success-bg);
   }
 </style>

@@ -3,6 +3,7 @@
   import { ranking, rotateTurnOrder } from './molkky';
   import ThrowTable from './ThrowTable.svelte';
   import Icon from './Icon.svelte';
+  import PlaceBadge from './PlaceBadge.svelte';
   import Modal from './Modal.svelte';
 
   let rows = $derived(view.state ? ranking(view.state) : []);
@@ -45,7 +46,8 @@
     <ol>
       {#each rows as { player, rank }, position (position)}
         {@const index = view.state.players.indexOf(player)}
-        <li class:finished={player.finishedAt !== null} class:eliminated={player.eliminated}>
+        <!-- Badges follow the finish order, like on the game screen: only players who reached 50 -->
+        <li class:first={player.finishedAt === 1} class:eliminated={player.eliminated}>
           <div class="row">
             <span class="rank">{rank}</span>
             <button
@@ -59,7 +61,11 @@
               <span class="truncate">{player.name}</span>
             </button>
             <span class="status">
-              {player.finishedAt !== null ? 'reached 50' : player.eliminated ? 'out' : ''}
+              {#if player.finishedAt !== null}
+                <PlaceBadge place={player.finishedAt} label="reached 50" />
+              {:else if player.eliminated}
+                out
+              {/if}
             </span>
             <span class="score">{player.score}</span>
           </div>
@@ -113,13 +119,14 @@
   }
   li {
     padding: 0.25rem 1rem;
-    border: 1px solid var(--line);
+    border: 1px solid var(--card-border, var(--line));
     border-radius: 0.625rem;
-    background: var(--surface);
+    background: var(--card-bg, var(--surface));
   }
-  li.finished {
-    border-color: var(--primary);
-    background: var(--success-bg);
+  /* The winner's card: gold border, so first place stands out at a glance */
+  li.first {
+    --card-border: var(--gold-border);
+    border-width: 2px;
   }
   li.eliminated .row {
     color: var(--text-muted);

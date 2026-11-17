@@ -12,6 +12,13 @@
   --success-bg: #dcebcf;
   --danger: #b3261e;
 
+  /* Finish-place badges (solid, with --text on them: gold 7.4:1, silver 6.7:1, bronze 5.2:1).
+     --gold-border marks the winner's card on Results (4:1+ against the page). */
+  --gold: #e0b10f;
+  --gold-border: #8a6a00;
+  --silver: #a9b0b8;
+  --bronze: #cd8a4f;
+
   /* Spacing scale (4/8px): --space-2 inside a group, --space-6 between groups */
   --space-1: 4px;
   --space-2: 8px;

@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import Controls from '../src/lib/Controls.svelte';
 import Results from '../src/lib/Results.svelte';
 import Setup from '../src/lib/Setup.svelte';
+import Scoreboard from '../src/lib/Scoreboard.svelte';
+import { ordinal } from '../src/lib/PlaceBadge.svelte';
 import { reset, start, view, throwPins, showResults } from '../src/lib/gameStore.svelte';
 import { loadSavedNames, saveName, savedNames } from '../src/lib/namesStore.svelte';
 import { MAX_SAVED_NAMES } from '../src/lib/names';
@@ -464,5 +466,68 @@ describe('Removing below the minimum', () => {
     document.querySelector<HTMLButtonElement>('[aria-label="Remove Blue"]')!.click();
     flushSync();
     expect(inputs().map((i) => i.value)).toEqual(['Red', '', '', '']);
+  });
+});
+
+describe('Active player and finish places', () => {
+  // Everyone throws the same pins each round, so all four reach 50 in round 5, in turn order
+  function finishAll() {
+    for (const pins of [[12], [12], [12], [12], [2]]) {
+      for (let i = 0; i < 4; i++) throwPins(pins);
+    }
+  }
+  const cards = () => [...document.querySelectorAll('li')];
+
+  it('marks the active player with the green card and a Throwing label', () => {
+    start(['John', 'Jane', 'Max']);
+    render(Scoreboard);
+    expect(cards()[0].classList.contains('current')).toBe(true);
+    expect(cards()[0].textContent).toMatch(/Throwing/);
+    expect(cards()[1].textContent).not.toMatch(/Throwing/);
+  });
+
+  it('makes finished cards look done, with gold/silver/bronze badges and a crown for the winner', () => {
+    start(['John', 'Jane', 'Max', 'Ada']);
+    finishAll();
+    render(Scoreboard);
+
+    expect(cards().every((c) => c.classList.contains('finished'))).toBe(true);
+    const badges = cards().map((c) => c.querySelector('.badge')!);
+    expect(badges.map((b) => b.textContent?.trim())).toEqual(['1st', '2nd', '3rd', '4th']);
+    expect(
+      badges.map((b) => [...b.classList].find((k) => k !== 'badge' && !k.startsWith('svelte-'))),
+    ).toEqual(['gold', 'silver', 'bronze', 'plain']);
+    expect(badges.map((b) => b.querySelector('svg') !== null)).toEqual([true, false, false, false]);
+  });
+
+  it('shows badges on the Results screen only for players who reached 50, and marks the winner', () => {
+    start(['John', 'Jane', 'Max']);
+    for (const pins of [[12], [12], [1], [12], [12], [1], [12], [12], [1], [12], [12], [1]]) {
+      throwPins(pins);
+    }
+    throwPins([2]); // John reaches 50
+    showResults();
+    render(Results);
+
+    const badges = [...document.querySelectorAll('.badge')];
+    expect(badges).toHaveLength(1);
+    expect(badges[0].textContent).toMatch(/reached 50/);
+    expect(cards()[0].classList.contains('first')).toBe(true);
+    expect(cards()[1].classList.contains('first')).toBe(false);
+  });
+
+  it('writes places as ordinals', () => {
+    expect([1, 2, 3, 4, 11, 12, 13, 21, 22, 23].map(ordinal)).toEqual([
+      '1st',
+      '2nd',
+      '3rd',
+      '4th',
+      '11th',
+      '12th',
+      '13th',
+      '21st',
+      '22nd',
+      '23rd',
+    ]);
   });
 });
