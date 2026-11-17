@@ -104,6 +104,16 @@ h1 {
   white-space: nowrap;
 }
 
+/* Text for screen readers only (e.g. "2 misses" next to the miss icons) */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 /* Shared action button: Miss/Score, game controls, results actions, dialog actions. */
 .btn {
   min-height: 48px;

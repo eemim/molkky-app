@@ -5,6 +5,7 @@
   const paths = {
     'chevron-up': ['m18 15-6-6-6 6'],
     check: ['M20 6 9 17l-5-5'],
+    x: ['M18 6 6 18', 'm6 6 12 12'],
     'chevron-down': ['m6 9 6 6 6-6'],
     trash: [
       'M3 6h18',

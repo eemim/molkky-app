@@ -2,6 +2,7 @@
   import { view, undo, rematch, reset, editTeams } from './gameStore.svelte';
   import { ranking, rotateTurnOrder } from './molkky';
   import ThrowTable from './ThrowTable.svelte';
+  import Icon from './Icon.svelte';
   import Modal from './Modal.svelte';
 
   let rows = $derived(view.state ? ranking(view.state) : []);
@@ -53,7 +54,8 @@
               aria-expanded={open === index}
               onclick={() => toggle(index)}
             >
-              <span aria-hidden="true">{open === index ? '▾' : '▸'}</span>
+              <!-- Down: the row can be opened. Up: it can be closed. -->
+              <Icon name={open === index ? 'chevron-up' : 'chevron-down'} />
               <span class="truncate">{player.name}</span>
             </button>
             <span class="status">

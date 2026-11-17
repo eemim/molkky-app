@@ -2,6 +2,7 @@
   import { view } from './gameStore.svelte';
   import { currentThrower } from './molkky';
   import ThrowTable from './ThrowTable.svelte';
+  import Icon from './Icon.svelte';
 
   let open = $state<number | null>(null);
 
@@ -30,7 +31,8 @@
               aria-expanded={open === index}
               onclick={() => toggle(index)}
             >
-              <span aria-hidden="true">{open === index ? '▾' : '▸'}</span>
+              <!-- Down: the card can be opened. Up: it can be closed. -->
+              <Icon name={open === index ? 'chevron-up' : 'chevron-down'} />
               <span class="truncate">{player.name}</span>
             </button>
             {#if thrower && index === game.current}
@@ -38,7 +40,16 @@
             {/if}
           </div>
           <span class="place">{player.finishedAt !== null ? `#${player.finishedAt}` : ''}</span>
-          <span class="misses">{'✕'.repeat(player.misses)}</span>
+          <span class="misses">
+            {#each Array.from({ length: player.misses }, (_, i) => i) as i (i)}
+              <Icon name="x" size={18} />
+            {/each}
+            {#if player.misses > 0}
+              <span class="visually-hidden">
+                {player.misses === 1 ? '1 miss' : `${player.misses} misses`}
+              </span>
+            {/if}
+          </span>
           <span class="score">{player.score}</span>
         </div>
 
@@ -106,6 +117,7 @@
     text-align: right;
   }
   .misses {
+    display: flex;
     color: var(--danger);
   }
   .current {
