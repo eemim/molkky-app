@@ -1,5 +1,6 @@
 import { flushSync, mount, tick, unmount } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import App from '../src/App.svelte';
 import Controls from '../src/lib/Controls.svelte';
 import Results from '../src/lib/Results.svelte';
 import Setup from '../src/lib/Setup.svelte';
@@ -22,7 +23,10 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-function render(Component: typeof Setup | typeof Controls | typeof Results, props = {}) {
+function render(
+  Component: typeof App | typeof Setup | typeof Controls | typeof Results,
+  props = {},
+) {
   component = mount(Component as never, { target: document.body, props });
   flushSync();
 }
@@ -558,5 +562,34 @@ describe('Active player and finish places', () => {
       '22nd',
       '23rd',
     ]);
+  });
+});
+
+describe('Settings screen', () => {
+  const byLabel = (label: string) =>
+    document.querySelector(`button[aria-label="${label}"]`) as HTMLButtonElement;
+
+  it('opens from the gear and goes back to Setup with typed names kept', () => {
+    render(App);
+    const first = inputs()[0];
+    first.value = 'John';
+    first.dispatchEvent(new Event('input', { bubbles: true }));
+    flushSync();
+
+    byLabel('Settings').click();
+    flushSync();
+    expect(document.querySelector('h1')?.textContent).toBe('Settings');
+    expect(document.querySelector('#setup-title')?.closest('[hidden]')).not.toBeNull();
+
+    byLabel('Back').click();
+    flushSync();
+    expect(document.querySelector('[hidden]')).toBeNull();
+    expect(inputs()[0].value).toBe('John');
+  });
+
+  it('has no gear on the Edit teams screen', () => {
+    start(['John', 'Jane'], [['John'], ['Jane']]);
+    render(Setup, { rematch: true });
+    expect(byLabel('Settings')).toBeNull();
   });
 });

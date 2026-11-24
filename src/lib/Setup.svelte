@@ -11,7 +11,8 @@
   type Team = { name: string; members: string[] };
 
   // `rematch`: edit the teams of the game that just finished, then play again
-  let { rematch = false }: { rematch?: boolean } = $props();
+  let { rematch = false, onOpenSettings }: { rematch?: boolean; onOpenSettings?: () => void } =
+    $props();
 
   function finishedTeams(): Team[] {
     return (view.state?.players ?? []).map((player) => ({
@@ -351,9 +352,16 @@
 <!-- Groups, top to bottom: header, mode picker, saved players, players/teams, start.
      The card and the form space groups with one gap (--space-6); inside a group, --space-2. -->
 <section class="setup-card" aria-labelledby="setup-title">
-  <header class="group">
-    <div class="eyebrow">Molkky</div>
-    <h1 id="setup-title">{rematch ? 'Edit teams' : 'Set up your game'}</h1>
+  <header class="header">
+    <div class="group">
+      <div class="eyebrow">Molkky</div>
+      <h1 id="setup-title">{rematch ? 'Edit teams' : 'Set up your game'}</h1>
+    </div>
+    {#if onOpenSettings}
+      <button type="button" class="settings-btn" aria-label="Settings" onclick={onOpenSettings}>
+        <Icon name="settings" size={24} />
+      </button>
+    {/if}
   </header>
 
   <div class="group">
@@ -629,7 +637,36 @@
     border: 1px solid var(--line);
     border-radius: var(--radius-lg);
     background: var(--surface);
-    box-shadow: 0 20px 50px rgb(55 45 25 / 12%);
+    box-shadow: var(--shadow-card);
+  }
+  .header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-2);
+  }
+  /* Borderless icon button, 44px target, pulled into the card's corner padding. */
+  .settings-btn {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    margin: calc(-1 * var(--space-2)) calc(-1 * var(--space-2)) 0 0;
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--text-muted);
+    transition: background-color 120ms ease;
+  }
+  .settings-btn:active {
+    background: var(--surface-muted);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .settings-btn {
+      transition: none;
+    }
   }
   .eyebrow {
     font-size: 0.85rem;
@@ -666,7 +703,7 @@
     background: var(--surface);
     color: var(--text);
     font-weight: 700;
-    box-shadow: 0 1px 3px rgb(31 43 32 / 25%);
+    box-shadow: var(--shadow-raised);
   }
   /* Columns line up with the rows below: label, the two order arrows, the remove button */
   .list-heading {
@@ -723,7 +760,7 @@
   }
   input:focus {
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgb(74 107 49 / 25%);
+    box-shadow: 0 0 0 3px var(--focus-glow);
   }
   input[aria-invalid='true'] {
     border-color: var(--danger);
@@ -780,7 +817,7 @@
     position: sticky;
     top: var(--space-2);
     z-index: 1;
-    box-shadow: 0 4px 12px rgb(55 45 25 / 10%);
+    box-shadow: var(--shadow-sticky);
   }
   .saved-heading {
     display: flex;

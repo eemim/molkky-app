@@ -12,12 +12,25 @@
   --success-bg: #dcebcf;
   --danger: #b3261e;
 
-  /* Finish-place badges (solid, with --text on them: gold 7.4:1, silver 6.7:1, bronze 5.2:1).
-     --gold-border marks the winner's card on Results (4:1+ against the page). */
+  /* Finish-place badges (solid, with --on-badge on them: gold 7.4:1, silver 6.7:1, bronze 5.2:1).
+     --gold-border marks the winner's card on Results. Decorative, so exempt from the 3:1 border
+     rule (1.8:1 here): the winner is already shown by the "wins!" heading and the 1st badge.
+     A gold dark enough for 3:1 on the cream page turns brown, so the badge gold is used instead. */
   --gold: #e0b10f;
-  --gold-border: #8a6a00;
+  --gold-border: var(--gold);
   --silver: #a9b0b8;
   --bronze: #cd8a4f;
+  --on-badge: #1f2b20; /* dark in both themes: the badge fills do not change */
+
+  /* Shadows, the input focus glow and the dialog backdrop (per theme, see the dark block) */
+  --shadow-card: 0 20px 50px rgb(55 45 25 / 12%);
+  --shadow-sticky: 0 4px 12px rgb(55 45 25 / 10%);
+  --shadow-raised: 0 1px 3px rgb(31 43 32 / 25%);
+  --shadow-dialog: 0 1rem 3rem rgb(0 0 0 / 20%);
+  --focus-glow: rgb(74 107 49 / 25%);
+  --scrim: rgb(31 43 32 / 55%);
+
+  color-scheme: light;
 
   /* Spacing scale (4/8px): --space-2 inside a group, --space-6 between groups */
   --space-1: 4px;
@@ -49,6 +62,34 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Dark theme: the same warm olive palette in lighter, less saturated tones (not inverted).
+   Set by data-theme="dark" on <html> (settingsStore, plus the inline script in index.html).
+   Contrast checked: text 5.4:1+ on every surface, borders 3.8:1+, primary/danger fills 6.2:1+
+   with --on-primary (dark here) on them. */
+:root[data-theme='dark'] {
+  --bg: #171a14;
+  --surface: #21251d;
+  --surface-muted: #2c3127;
+  --line: #3a4034;
+  --border: #858d78;
+  --text: #ece8dc;
+  --text-muted: #adb3a3;
+  --primary: #a3c47f;
+  --on-primary: #171a14;
+  --success-bg: #2c3d22;
+  --danger: #f0857b;
+  --gold-border: #c9a227;
+
+  --shadow-card: 0 20px 50px rgb(0 0 0 / 45%);
+  --shadow-sticky: 0 4px 12px rgb(0 0 0 / 40%);
+  --shadow-raised: 0 1px 3px rgb(0 0 0 / 50%);
+  --shadow-dialog: 0 1rem 3rem rgb(0 0 0 / 60%);
+  --focus-glow: rgb(163 196 127 / 30%);
+  --scrim: rgb(0 0 0 / 65%);
+
+  color-scheme: dark;
 }
 
 * {
