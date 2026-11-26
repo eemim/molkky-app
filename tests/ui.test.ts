@@ -1,5 +1,6 @@
 import { flushSync, mount, tick, unmount } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import App from '../src/App.svelte';
 import Controls from '../src/lib/Controls.svelte';
 import Results from '../src/lib/Results.svelte';
 import Setup from '../src/lib/Setup.svelte';
@@ -8,6 +9,7 @@ import { ordinal } from '../src/lib/PlaceBadge.svelte';
 import { reset, start, view, throwPins, showResults } from '../src/lib/gameStore.svelte';
 import { loadSavedNames, saveName, savedNames } from '../src/lib/namesStore.svelte';
 import { MAX_SAVED_NAMES } from '../src/lib/names';
+import { loadSettings, setNumberPad } from '../src/lib/settingsStore.svelte';
 
 let component: ReturnType<typeof mount> | undefined;
 
@@ -15,6 +17,7 @@ beforeEach(() => {
   localStorage.clear();
   reset();
   loadSavedNames();
+  loadSettings();
 });
 afterEach(() => {
   if (component) unmount(component);
@@ -22,7 +25,10 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-function render(Component: typeof Setup | typeof Controls | typeof Results, props = {}) {
+function render(
+  Component: typeof App | typeof Setup | typeof Controls | typeof Results,
+  props = {},
+) {
   component = mount(Component as never, { target: document.body, props });
   flushSync();
 }
@@ -558,5 +564,104 @@ describe('Active player and finish places', () => {
       '22nd',
       '23rd',
     ]);
+  });
+});
+
+describe('Settings screen', () => {
+  const byLabel = (label: string) =>
+    document.querySelector(`button[aria-label="${label}"]`) as HTMLButtonElement;
+
+  it('opens from the gear and goes back to Setup with typed names kept', () => {
+    render(App);
+    const first = inputs()[0];
+    first.value = 'John';
+    first.dispatchEvent(new Event('input', { bubbles: true }));
+    flushSync();
+
+    byLabel('Settings').click();
+    flushSync();
+    expect(document.querySelector('h1')?.textContent).toBe('Settings');
+    expect(document.querySelector('#setup-title')?.closest('[hidden]')).not.toBeNull();
+
+    byLabel('Back').click();
+    flushSync();
+    expect(document.querySelector('[hidden]')).toBeNull();
+    expect(inputs()[0].value).toBe('John');
+  });
+
+  it('has no gear on the Edit teams screen', () => {
+    start(['John', 'Jane'], [['John'], ['Jane']]);
+    render(Setup, { rematch: true });
+    expect(byLabel('Settings')).toBeNull();
+  });
+});
+
+describe('Number pad', () => {
+  const keys = () => [...document.querySelectorAll<HTMLButtonElement>('.key')];
+  const key = (n: number) => keys().find((b) => b.textContent?.trim() === String(n))!;
+  const scoreButton = () =>
+    [...document.querySelectorAll('button')].find((b) =>
+      b.textContent?.trim().startsWith('Score'),
+    ) as HTMLButtonElement;
+  const score = (player: number) => view.state!.players[player].score;
+
+  beforeEach(() => start(['John', 'Jane']));
+
+  it('shows pins by default and the 1-12 pad when the setting is on', () => {
+    render(App);
+    expect(document.querySelector('.pin')).not.toBeNull();
+    expect(keys()).toHaveLength(0);
+    unmount(component!);
+
+    setNumberPad(true);
+    render(App);
+    expect(document.querySelector('.pin')).toBeNull();
+    expect(keys().map((b) => Number(b.textContent))).toEqual([
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+    ]);
+  });
+
+  it('selects one number at a time, then scores it', () => {
+    setNumberPad(true);
+    render(App);
+    expect(scoreButton().disabled).toBe(true);
+
+    key(3).click();
+    flushSync();
+    key(7).click();
+    flushSync();
+    expect(key(3).getAttribute('aria-pressed')).toBe('false');
+    expect(key(7).getAttribute('aria-pressed')).toBe('true');
+    expect(scoreButton().textContent?.trim()).toBe('Score 7');
+
+    scoreButton().click();
+    flushSync();
+    expect(score(0)).toBe(7);
+    expect(view.state!.current).toBe(1);
+    expect(key(7).getAttribute('aria-pressed')).toBe('false');
+    expect(scoreButton().disabled).toBe(true);
+  });
+
+  it('clears the choice when the selected number is tapped again', () => {
+    setNumberPad(true);
+    render(App);
+    key(12).click();
+    flushSync();
+    key(12).click();
+    flushSync();
+    expect(key(12).getAttribute('aria-pressed')).toBe('false');
+    expect(scoreButton().disabled).toBe(true);
+  });
+
+  it('Miss counts a miss and clears the choice', () => {
+    setNumberPad(true);
+    render(App);
+    key(5).click();
+    flushSync();
+    button('Miss').click();
+    flushSync();
+    expect(score(0)).toBe(0);
+    expect(view.state!.players[0].misses).toBe(1);
+    expect(key(5).getAttribute('aria-pressed')).toBe('false');
   });
 });

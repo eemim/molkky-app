@@ -126,7 +126,7 @@
   /* The winner's card: gold border, so first place stands out at a glance */
   li.first {
     --card-border: var(--gold-border);
-    border-width: 2px;
+    border-width: 3px;
   }
   /* Same "out" look as on the game screen */
   li.eliminated {

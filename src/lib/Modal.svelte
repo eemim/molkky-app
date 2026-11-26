@@ -36,10 +36,10 @@
     background: var(--surface);
     color: var(--text);
     border-radius: 0.75rem;
-    box-shadow: 0 1rem 3rem rgb(0 0 0 / 20%);
+    box-shadow: var(--shadow-dialog);
   }
   dialog::backdrop {
-    background: rgb(31 43 32 / 55%);
+    background: var(--scrim);
   }
   h2 {
     margin: 0;

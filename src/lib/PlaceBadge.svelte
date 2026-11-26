@@ -33,7 +33,7 @@
     gap: var(--space-1);
     padding: 2px var(--space-2);
     border-radius: 999px;
-    color: var(--text);
+    color: var(--on-badge);
     font-size: 0.85rem;
     font-weight: 700;
     white-space: nowrap;
