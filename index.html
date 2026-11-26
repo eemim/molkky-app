@@ -8,11 +8,17 @@
     <meta name="theme-color" content="#f4f1e8" />
     <title>molkky-app</title>
     <script>
-      // Apply the saved dark theme before the app loads, so it never flashes light first.
-      // Same key and format as src/lib/settingsStore.svelte.ts.
+      // Apply the dark theme before the app loads, so it never flashes light first.
+      // Same keys and format as src/lib/settingsStore.svelte.ts (v1 { darkMode } is read until
+      // the app migrates it to v2 on its first load). No save means 'system'.
       try {
-        var s = JSON.parse(localStorage.getItem('molkky-settings-v1') || 'null');
-        if (s && s.darkMode === true) {
+        var s = JSON.parse(localStorage.getItem('molkky-settings-v2') || 'null');
+        var v1 = JSON.parse(localStorage.getItem('molkky-settings-v1') || 'null');
+        var theme = s ? s.theme : v1 && v1.darkMode === true ? 'dark' : 'system';
+        var dark =
+          theme === 'dark' ||
+          (theme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        if (dark) {
           document.documentElement.dataset.theme = 'dark';
           document.querySelector('meta[name="theme-color"]').content = '#171a14';
         }

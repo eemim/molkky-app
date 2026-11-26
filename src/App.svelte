@@ -3,12 +3,22 @@
   import Setup from './lib/Setup.svelte';
   import Scoreboard from './lib/Scoreboard.svelte';
   import NumberPad from './lib/NumberPad.svelte';
+  import PointsPad from './lib/PointsPad.svelte';
+  import { settings } from './lib/settingsStore.svelte';
+  import { keepScreenOn } from './lib/keepAwake';
   import Controls from './lib/Controls.svelte';
   import Results from './lib/Results.svelte';
   import Settings from './lib/Settings.svelte';
 
   // UI navigation only, not game state, so it lives here rather than in gameStore.
   let settingsOpen = $state(false);
+
+  // Screen stays on only while a game is being played. The effect re-runs when the setting or
+  // the game state changes; the cleanup lets the screen sleep again if App goes away.
+  $effect(() => {
+    keepScreenOn(settings.keepAwake && !!view.state && !view.state.ended);
+    return () => keepScreenOn(false);
+  });
 </script>
 
 <svelte:head>
@@ -34,7 +44,11 @@
   {:else}
     <div class="game">
       <Scoreboard />
-      <NumberPad />
+      {#if settings.numberPad}
+        <PointsPad />
+      {:else}
+        <NumberPad />
+      {/if}
       <Controls />
     </div>
   {/if}
